@@ -1,0 +1,138 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Rajdhani", sans-serif;
+  background: #0a1929;
+  color: #ffffff;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a1929;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00ced1 0%, #9b51e0 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #5fe3e6 0%, #ba7fed 100%);
+}
+
+/* Animated Background */
+.animated-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: radial-gradient(
+      circle at 20% 50%,
+      rgba(155, 81, 224, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(0, 206, 209, 0.15) 0%,
+      transparent 50%
+    ),
+    #0a1929;
+  animation: bgShift 20s ease infinite;
+}
+
+@keyframes bgShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Glow Effect */
+.glow-text {
+  text-shadow: 0 0 10px rgba(0, 206, 209, 0.8), 0 0 20px rgba(0, 206, 209, 0.6),
+    0 0 30px rgba(0, 206, 209, 0.4);
+}
+
+.glow-box {
+  box-shadow: 0 0 20px rgba(0, 206, 209, 0.4), 0 0 40px rgba(155, 81, 224, 0.2);
+}
+
+/* Neon Border Animation */
+@keyframes neonBorder {
+  0%,
+  100% {
+    border-color: rgba(0, 206, 209, 0.8);
+    box-shadow: 0 0 10px rgba(0, 206, 209, 0.6);
+  }
+  50% {
+    border-color: rgba(155, 81, 224, 0.8);
+    box-shadow: 0 0 10px rgba(155, 81, 224, 0.6);
+  }
+}
+
+.neon-border {
+  border: 2px solid;
+  animation: neonBorder 3s ease-in-out infinite;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #00ced1 0%, #9b51e0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Smooth Transitions */
+.transition-all {
+  transition: all 0.3s ease;
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 206, 209, 0.2);
+  border-top-color: #00ced1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* No Select */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
