@@ -11,6 +11,20 @@ const api = axios.create({
   },
 });
 
+export interface PCStatus {
+  pcNumber: string;
+  name: string;
+  status: "available" | "occupied" | "maintenance";
+  location?: string;
+}
+
+export interface PCStats {
+  total: number;
+  available: number;
+  occupied: number;
+  maintenance: number;
+}
+
 export const menuApi = {
   // Get all menu products (public endpoint)
   getMenuProducts: async (): Promise<Product[]> => {
@@ -21,6 +35,12 @@ export const menuApi = {
   // Get exchange rate
   getExchangeRate: async (): Promise<{ rate: number; lastUpdated: string }> => {
     const response = await api.get("/exchange-rate/current");
+    return response.data.data;
+  },
+
+  // Get PC availability status
+  getPCStatus: async (): Promise<{ pcs: PCStatus[]; stats: PCStats }> => {
+    const response = await api.get("/gaming/pcs/status");
     return response.data.data;
   },
 };

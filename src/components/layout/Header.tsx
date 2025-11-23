@@ -12,7 +12,13 @@ import {
   ListItemText,
   Container,
 } from "@mui/material";
-import { Menu as MenuIcon, Close, Restaurant, Home } from "@mui/icons-material";
+import {
+  Menu as MenuIcon,
+  Close,
+  Restaurant,
+  Home,
+  SportsEsports,
+} from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -28,6 +34,7 @@ const Header: React.FC = () => {
   const menuItems = [
     { label: "Home", path: "/", icon: <Home /> },
     { label: "Menu", path: "/menu", icon: <Restaurant /> },
+    { label: "Gaming", path: "/gaming", icon: <SportsEsports /> },
   ];
 
   const drawer = (

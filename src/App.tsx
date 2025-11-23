@@ -10,6 +10,7 @@ import Footer from "@components/layout/Footer";
 import LandingPage from "@pages/LandingPage";
 import MenuPage from "@pages/MenuPage";
 import "@assets/styles/global.css";
+import PCStatusPage from "./pages/PCStatusPage";
 
 const AppContent: React.FC = () => {
   // Initialize cursor follow effect
@@ -39,6 +40,7 @@ const AppContent: React.FC = () => {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/menu" element={<MenuPage />} />
+          <Route path="/gaming" element={<PCStatusPage />} />
         </Routes>
       </Box>
 

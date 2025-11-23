@@ -155,6 +155,19 @@ const Footer: React.FC = () => {
                 Menu
               </Link>
               <Link
+                href="/gaming"
+                sx={{
+                  color: "#B2BAC2",
+                  textDecoration: "none",
+                  "&:hover": {
+                    color: "#00CED1",
+                  },
+                  transition: "color 0.3s ease",
+                }}
+              >
+                Gaming Status
+              </Link>
+              <Link
                 href="/#features"
                 sx={{
                   color: "#B2BAC2",
