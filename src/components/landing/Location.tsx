@@ -28,7 +28,7 @@ const Location: React.FC = () => {
 
   const handleGetDirections = () => {
     window.open(
-      "https://maps.google.com/?q=Epic+Lounge+Sidon+Lebanon",
+      "https://maps.google.com/?q=Sawfar+badghan+main+road+near+habibi+cut",
       "_blank"
     );
   };
@@ -75,7 +75,7 @@ const Location: React.FC = () => {
                 fontSize: { xs: "1.1rem", md: "1.3rem" },
               }}
             >
-              Find us in the heart of Sidon
+              Find us in Sawfar, badghan
             </Typography>
           </Stack>
         </motion.div>

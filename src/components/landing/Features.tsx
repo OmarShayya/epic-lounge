@@ -23,6 +23,7 @@ import {
   VideogameAsset,
   TableRestaurant,
   LocalActivity,
+  LocationOn,
 } from "@mui/icons-material";
 
 interface Feature {
@@ -44,7 +45,7 @@ const features: Feature[] = [
     icon: <VideogameAsset sx={{ fontSize: 60 }} />,
     title: "Online Gaming Zone",
     description:
-      "High-end PCs with RTX 4090 for CS2, Valorant, League of Legends & more",
+      "High-end PCs with RTX 5070, 32GB RAM, 244Hz monitors for CS2, Valorant & more",
     color: "#9B51E0",
   },
   {
@@ -338,15 +339,48 @@ const Features: React.FC = () => {
               Visit us today and discover why we're Lebanon's favorite gaming
               lounge!
             </Typography>
-            <Typography
-              variant="h6"
+            <Box
+              component="a"
+              href="https://maps.google.com/?q=Sawfar+badghan+main+road+near+habibi+cut"
+              target="_blank"
+              rel="noopener noreferrer"
               sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                textDecoration: "none",
                 color: "#00CED1",
                 fontWeight: 600,
+                fontSize: "1.25rem",
+                fontFamily: "Rajdhani",
+                transition: "all 0.3s ease",
+                cursor: "pointer",
+                "&:hover": {
+                  color: "#9B51E0",
+                  transform: "translateY(-2px)",
+                  "& .location-icon": {
+                    transform: "scale(1.2)",
+                  },
+                },
               }}
             >
-              📍 Sidon, South Governorate, Lebanon
-            </Typography>
+              <LocationOn
+                className="location-icon"
+                sx={{
+                  fontSize: 28,
+                  transition: "transform 0.3s ease",
+                }}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  color: "inherit",
+                }}
+              >
+                Sawfar, badghan, main road, near 'habibi cut'
+              </Typography>
+            </Box>
           </Box>
         </motion.div>
       </Container>

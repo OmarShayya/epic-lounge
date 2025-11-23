@@ -1,62 +1,170 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Box, Container, Typography, Stack } from "@mui/material";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectCoverflow, Navigation } from "swiper/modules";
+import { PlayCircle } from "@mui/icons-material";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "swiper/css/navigation";
 
-// Gallery images (you'll need to add actual images to public/images/gallery/)
-const galleryImages = [
+const image1 = new URL(
+  "../../assets/images/WhatsApp Image 2025-11-09 at 20.31.43.jpeg",
+  import.meta.url
+).href;
+const image2 = new URL(
+  "../../assets/images/WhatsApp Image 2025-11-09 at 20.31.44.jpeg",
+  import.meta.url
+).href;
+const video1 = new URL(
+  "../../assets/images/WhatsApp Video 2025-11-09 at 20.31.44.mp4",
+  import.meta.url
+).href;
+const video2 = new URL(
+  "../../assets/images/WhatsApp Video 2025-11-09 at 20.31.48.mp4",
+  import.meta.url
+).href;
+const video3 = new URL(
+  "../../assets/images/WhatsApp Video 2025-11-09 at 20.31.55.mp4",
+  import.meta.url
+).href;
+const video4 = new URL(
+  "../../assets/images/WhatsApp Video 2025-11-09 at 20.32.01.mp4",
+  import.meta.url
+).href;
+const video5 = new URL(
+  "../../assets/images/WhatsApp Video 2025-11-09 at 20.32.03.mp4",
+  import.meta.url
+).href;
+
+interface MediaItem {
+  src: string;
+  type: "image" | "video";
+  title: string;
+  alt: string;
+}
+
+// Gallery media items
+const galleryMedia: MediaItem[] = [
   {
-    src: "/images/gallery/gaming-pcs.jpg",
-    title: "High-End Gaming PCs",
-    alt: "Gaming PC setup with RGB lighting",
+    src: image1,
+    type: "image",
+    title: "Epic Lounge Interior",
+    alt: "Epic Lounge gaming setup",
   },
   {
-    src: "/images/gallery/ps5-room.jpg",
-    title: "Private PS5 Room",
-    alt: "Cozy PS5 gaming room",
+    src: video1,
+    type: "video",
+    title: "Gaming Station Tour",
+    alt: "Video tour of gaming stations",
   },
   {
-    src: "/images/gallery/billiards.jpg",
-    title: "Professional Billiards",
-    alt: "Billiard table",
+    src: image2,
+    type: "image",
+    title: "Premium Setup",
+    alt: "Premium gaming equipment",
   },
   {
-    src: "/images/gallery/foosball.jpg",
-    title: "Foosball Action",
-    alt: "Foosball table",
+    src: video2,
+    type: "video",
+    title: "Gaming Experience",
+    alt: "Gaming experience video",
   },
   {
-    src: "/images/gallery/lan-party.jpg",
-    title: "CS 1.6 LAN Setup",
-    alt: "LAN gaming area",
+    src: video3,
+    type: "video",
+    title: "Lounge Atmosphere",
+    alt: "Lounge atmosphere video",
   },
   {
-    src: "/images/gallery/lounge.jpg",
-    title: "Chill Zone",
-    alt: "Comfortable lounge area",
+    src: video4,
+    type: "video",
+    title: "Facilities Showcase",
+    alt: "Facilities showcase video",
   },
   {
-    src: "/images/gallery/big-screen.jpg",
-    title: "Football Viewing",
-    alt: "Big screen for watching football",
-  },
-  {
-    src: "/images/gallery/snacks.jpg",
-    title: "Snacks & Coffee",
-    alt: "Food and beverages",
+    src: video5,
+    type: "video",
+    title: "Gaming Action",
+    alt: "Gaming action video",
   },
 ];
+
+// Lazy loading video component
+const LazyVideo: React.FC<{
+  src: string;
+  alt: string;
+  isActive: boolean;
+}> = ({ src, alt, isActive }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    if (isActive && isLoaded) {
+      videoRef.current.play().catch(() => {
+        // Auto-play was prevented, user interaction needed
+      });
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive, isLoaded]);
+
+  const handleLoadedData = () => {
+    setIsLoaded(true);
+  };
+
+  return (
+    <Box sx={{ position: "relative", width: "100%", height: "400px" }}>
+      <video
+        ref={videoRef}
+        src={src}
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        onLoadedData={handleLoadedData}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transition: "transform 0.5s ease",
+        }}
+      />
+      {!isPlaying && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
+          }}
+        >
+          <PlayCircle
+            sx={{
+              fontSize: 80,
+              color: "rgba(0,206,209,0.8)",
+              filter: "drop-shadow(0 0 20px rgba(0,206,209,0.6))",
+            }}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+};
 
 const Gallery: React.FC = () => {
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
+  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
     <Box
@@ -164,14 +272,16 @@ const Gallery: React.FC = () => {
                 slideShadows: true,
               }}
               autoplay={{
-                delay: 3000,
+                delay: 4000,
                 disableOnInteraction: false,
+                pauseOnMouseEnter: true,
               }}
               navigation={true}
               loop={true}
+              onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
               style={{ padding: "40px 0" }}
             >
-              {galleryImages.map((image, index) => (
+              {galleryMedia.map((media, index) => (
                 <SwiperSlide
                   key={index}
                   style={{
@@ -190,7 +300,7 @@ const Gallery: React.FC = () => {
                       "&:hover": {
                         border: "2px solid rgba(0,206,209,0.8)",
                         boxShadow: "0 20px 60px rgba(0,206,209,0.4)",
-                        "& .image-overlay": {
+                        "& .media-overlay": {
                           opacity: 1,
                         },
                         "& img": {
@@ -199,28 +309,31 @@ const Gallery: React.FC = () => {
                       },
                     }}
                   >
-                    {/* Image */}
-                    <Box
-                      component="img"
-                      src={image.src}
-                      alt={image.alt}
-                      onError={(e: any) => {
-                        // Fallback to placeholder if image doesn't exist
-                        e.target.src = `https://via.placeholder.com/600x400/132F4C/00CED1?text=${encodeURIComponent(
-                          image.title
-                        )}`;
-                      }}
-                      sx={{
-                        width: "100%",
-                        height: "400px",
-                        objectFit: "cover",
-                        transition: "transform 0.5s ease",
-                      }}
-                    />
+                    {/* Render Image or Video */}
+                    {media.type === "image" ? (
+                      <Box
+                        component="img"
+                        src={media.src}
+                        alt={media.alt}
+                        loading="lazy"
+                        sx={{
+                          width: "100%",
+                          height: "400px",
+                          objectFit: "cover",
+                          transition: "transform 0.5s ease",
+                        }}
+                      />
+                    ) : (
+                      <LazyVideo
+                        src={media.src}
+                        alt={media.alt}
+                        isActive={activeIndex === index}
+                      />
+                    )}
 
                     {/* Overlay with Title */}
                     <Box
-                      className="image-overlay"
+                      className="media-overlay"
                       sx={{
                         position: "absolute",
                         bottom: 0,
@@ -242,7 +355,7 @@ const Gallery: React.FC = () => {
                           textShadow: "0 2px 10px rgba(0,0,0,0.5)",
                         }}
                       >
-                        {image.title}
+                        {media.title}
                       </Typography>
                     </Box>
 

@@ -144,7 +144,7 @@ const CTA: React.FC = () => {
                     fontSize: { xs: "2rem", md: "2.5rem" },
                   }}
                 >
-                  RTX 4090
+                  RTX 5070
                 </Typography>
                 <Typography
                   variant="body2"
@@ -154,7 +154,7 @@ const CTA: React.FC = () => {
                     letterSpacing: 1,
                   }}
                 >
-                  Gaming PCs
+                  32GB RAM • 244Hz
                 </Typography>
               </Box>
 
@@ -207,10 +207,10 @@ const CTA: React.FC = () => {
                     fontFamily: "Orbitron",
                     fontWeight: 900,
                     color: "#FF00FF",
-                    fontSize: { xs: "2rem", md: "2.5rem" },
+                    fontSize: { xs: "1.8rem", md: "2.2rem" },
                   }}
                 >
-                  24/7
+                  4PM - Morning
                 </Typography>
                 <Typography
                   variant="body2"
@@ -220,7 +220,7 @@ const CTA: React.FC = () => {
                     letterSpacing: 1,
                   }}
                 >
-                  Open Daily
+                  Everyday
                 </Typography>
               </Box>
             </Stack>

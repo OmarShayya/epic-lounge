@@ -25,7 +25,7 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
-const WHATSAPP_NUMBER = "96181453643"; // Example: Lebanon number
+const WHATSAPP_NUMBER = "96170292859"; // Lebanon number
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
   const { items, updateQuantity, removeItem, clearCart, getTotalPrice } =

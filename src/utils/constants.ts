@@ -1,7 +1,7 @@
 export const CONTACT_INFO = {
-  phone: "+961 XXX XXX",
-  email: "info@epiclounge.com",
-  address: "Your Address, Lebanon",
+  phone: "+961 70 292 859",
+  email: "Nassimbfd123@gmail.com",
+  address: "Sawfar, badghan, main road, near 'habibi cut'",
 };
 
 export const SOCIAL_LINKS = {
@@ -11,15 +11,13 @@ export const SOCIAL_LINKS = {
 };
 
 export const OPENING_HOURS = [
-  { day: "Monday - Thursday", hours: "2:00 PM - 2:00 AM" },
-  { day: "Friday - Saturday", hours: "2:00 PM - 4:00 AM" },
-  { day: "Sunday", hours: "2:00 PM - 12:00 AM" },
+  { day: "Everyday", hours: "4:00 PM - Morning" },
 ];
 
 export const FEATURES = [
   {
     title: "Premium Gaming Setup",
-    description: "High-end PCs with RTX 4090 graphics cards",
+    description: "High-end PCs with RTX 5070 graphics cards, 32GB RAM, 244Hz monitors",
     icon: "🎮",
   },
   {
