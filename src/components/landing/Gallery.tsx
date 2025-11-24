@@ -94,9 +94,8 @@ const galleryMedia: MediaItem[] = [
 // Lazy loading video component
 const LazyVideo: React.FC<{
   src: string;
-  alt: string;
   isActive: boolean;
-}> = ({ src, alt, isActive }) => {
+}> = ({ src, isActive }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -326,7 +325,6 @@ const Gallery: React.FC = () => {
                     ) : (
                       <LazyVideo
                         src={media.src}
-                        alt={media.alt}
                         isActive={activeIndex === index}
                       />
                     )}

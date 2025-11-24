@@ -22,7 +22,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        target: "https://simple-pos-6be8.onrender.com",
         changeOrigin: true,
       },
     },

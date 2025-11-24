@@ -329,7 +329,7 @@ const Footer: React.FC = () => {
                   transition: "all 0.3s ease",
                 }}
               >
-                Omar Shayya
+                Omar Shayya & Nael Shayya
               </Typography>
               <Box
                 sx={{

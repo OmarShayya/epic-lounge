@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Fab, Badge, Box } from "@mui/material";
+import { Fab, Badge } from "@mui/material";
 import { ShoppingCart } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
