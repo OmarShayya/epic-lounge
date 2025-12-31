@@ -17,11 +17,11 @@ export const PC_LAYOUT: PCPosition[] = [
 
 
   // Bottom row (right to left)
-  { pcNumber: "PC-010", x: 80, y: 85, rotation: 180 },
-  { pcNumber: "PC-009", x: 65, y: 85, rotation: 180 },
-  { pcNumber: "PC-008", x: 50, y: 85, rotation: 180 },
-  { pcNumber: "PC-007", x: 35, y: 85, rotation: 180 },
-  { pcNumber: "PC-006", x: 20, y: 85, rotation: 180 },
+  { pcNumber: "PC-010", x: 80, y: 85, rotation: 0 },
+  { pcNumber: "PC-009", x: 65, y: 85, rotation: 0 },
+  { pcNumber: "PC-008", x: 50, y: 85, rotation: 0 },
+  { pcNumber: "PC-007", x: 35, y: 85, rotation: 0 },
+  { pcNumber: "PC-006", x: 20, y: 85, rotation: 0 },
 ];
 
 // You can easily add more PCs or adjust positions here
