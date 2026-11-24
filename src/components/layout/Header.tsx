@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AppBar, Box, Button, Container, IconButton, Stack, Typography } from "@mui/material";
-import { Phone, WhatsApp, ArrowOutward } from "@mui/icons-material";
+import { Phone, WhatsApp, ArrowOutward, EventAvailable } from "@mui/icons-material";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { tokens } from "@theme/theme";
@@ -11,6 +11,9 @@ const NAV = [
   { label: "Menu", path: "/menu" },
   { label: "Live PCs", path: "/gaming" },
 ];
+
+/** Mobile menu also lists booking (on desktop it's the standalone primary button). */
+const MOBILE_NAV = [...NAV, { label: "Reserve", path: "/reserve" }];
 
 const WHATSAPP_URL = `https://wa.me/${CONTACT_INFO.phone.replace(/\D/g, "")}`;
 
@@ -59,7 +62,10 @@ const Header: React.FC = () => {
     };
   }, [open]);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    path === "/" ? location.pathname === "/" : location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const onBookingPage = location.pathname.startsWith("/reserve");
+  const tinted = /^\/(menu|reserve)/.test(location.pathname);
 
   return (
     <>
@@ -70,7 +76,7 @@ const Header: React.FC = () => {
           zIndex: 1300,
           background:
             scrolled || open
-              ? location.pathname === "/menu" && !open
+              ? tinted && !open
                 ? "rgba(36,30,68,0.88)"
                 : "rgba(12,13,19,0.86)"
               : "transparent",
@@ -170,7 +176,36 @@ const Header: React.FC = () => {
               >
                 Call
               </Button>
+              <Button
+                component={RouterLink}
+                to="/reserve"
+                variant="contained"
+                size="small"
+                startIcon={<EventAvailable sx={{ fontSize: 17 }} />}
+                sx={{ fontWeight: 700, boxShadow: onBookingPage ? `0 0 0 4px rgba(0,206,209,0.2)` : "none" }}
+              >
+                Reserve
+              </Button>
             </Stack>
+
+            {/* Mobile: quick "Book" pill next to the menu button */}
+            <Button
+              component={RouterLink}
+              to="/reserve"
+              variant="contained"
+              size="small"
+              startIcon={<EventAvailable sx={{ fontSize: 16 }} />}
+              sx={{
+                display: { xs: onBookingPage || open ? "none" : "inline-flex", md: "none" },
+                ml: "auto",
+                mr: 1,
+                px: 1.75,
+                height: 38,
+                fontWeight: 700,
+              }}
+            >
+              Book
+            </Button>
 
             {/* Mobile toggle */}
             <IconButton
@@ -221,7 +256,7 @@ const Header: React.FC = () => {
               }}
             />
             <Stack sx={{ px: 3, flex: 1, position: "relative" }} spacing={0.5}>
-              {NAV.map((item, i) => (
+              {MOBILE_NAV.map((item, i) => (
                 <motion.div
                   key={item.path}
                   initial={{ opacity: 0, y: 24 }}
@@ -262,10 +297,24 @@ const Header: React.FC = () => {
               transition={{ delay: 0.35, duration: 0.4 }}
               style={{ position: "relative" }}
             >
+              <Box sx={{ px: 3, pt: 2 }}>
+                <Button
+                  fullWidth
+                  component={RouterLink}
+                  to="/reserve"
+                  onClick={() => setOpen(false)}
+                  variant="contained"
+                  size="large"
+                  startIcon={<EventAvailable />}
+                  sx={{ fontWeight: 700 }}
+                >
+                  Book a station
+                </Button>
+              </Box>
               <Stack
                 direction="row"
                 spacing={1.5}
-                sx={{ px: 3, pb: "calc(24px + env(safe-area-inset-bottom))", pt: 2 }}
+                sx={{ px: 3, pb: "calc(24px + env(safe-area-inset-bottom))", pt: 1.5 }}
               >
                 <Button fullWidth variant="outlined" href={`tel:${CONTACT_INFO.phone}`} startIcon={<Phone />}>
                   Call

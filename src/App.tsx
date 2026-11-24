@@ -11,6 +11,8 @@ import Footer from "@components/layout/Footer";
 import LandingPage from "@pages/LandingPage";
 import MenuPage from "@pages/MenuPage";
 import PCStatusPage from "@pages/PCStatusPage";
+import ReservePage from "@pages/ReservePage";
+import ManageBookingPage from "@pages/ManageBookingPage";
 import "@assets/styles/global.css";
 
 const AppContent: React.FC = () => {
@@ -36,6 +38,8 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<LandingPage />} />
               <Route path="/menu" element={<MenuPage />} />
               <Route path="/gaming" element={<PCStatusPage />} />
+              <Route path="/reserve" element={<ReservePage />} />
+              <Route path="/reserve/manage" element={<ManageBookingPage />} />
             </Routes>
           </motion.div>
         </AnimatePresence>

@@ -40,8 +40,11 @@ export interface Arena {
   image?: string;
   imagePosition?: string;
   accent: string;
-  cta: { kind: "link"; label: string; to: string } | { kind: "call"; label: string };
+  cta: ArenaCta;
+  secondary?: ArenaCta;
 }
+
+export type ArenaCta = { kind: "link"; label: string; to: string } | { kind: "call"; label: string };
 
 export const ARENAS: Arena[] = [
   {
@@ -53,7 +56,8 @@ export const ARENAS: Arena[] = [
     image: arenaPc,
     imagePosition: "78% center",
     accent: "#FF9F1C",
-    cta: { kind: "link", label: "See free PCs", to: "/gaming" },
+    cta: { kind: "link", label: "Book a PC", to: "/reserve?type=pc" },
+    secondary: { kind: "link", label: "See free PCs", to: "/gaming" },
   },
   {
     id: "ps5",
@@ -64,6 +68,7 @@ export const ARENAS: Arena[] = [
     image: arenaPs5,
     imagePosition: "40% 30%",
     accent: "#00CED1",
-    cta: { kind: "call", label: "Call us" },
+    cta: { kind: "link", label: "Book a PS5 room", to: "/reserve?type=playstation" },
+    secondary: { kind: "call", label: "Call us" },
   },
 ];
