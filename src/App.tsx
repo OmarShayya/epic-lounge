@@ -1,66 +1,62 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider, CssBaseline, Box } from "@mui/material";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { theme } from "@theme/theme";
-import { useCursorFollow } from "@hooks/useCursorFollow";
 import { CartProvider } from "./context/CartContext";
 import ScrollToTop from "@components/common/ScrollToTop";
+import CustomCursor from "@components/common/CustomCursor";
 import Header from "@components/layout/Header";
 import Footer from "@components/layout/Footer";
 import LandingPage from "@pages/LandingPage";
 import MenuPage from "@pages/MenuPage";
+import PCStatusPage from "@pages/PCStatusPage";
 import "@assets/styles/global.css";
-import PCStatusPage from "./pages/PCStatusPage";
 
 const AppContent: React.FC = () => {
-  // Initialize cursor follow effect
-  useCursorFollow();
+  const location = useLocation();
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#0A1929",
-        cursor: "none", // Hide default cursor for custom trail
-      }}
-    >
-      {/* Animated Background */}
-      <div className="animated-bg" />
-
-      {/* Auto scroll to top on route change */}
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="page-bg" aria-hidden="true" />
+      <CustomCursor />
       <ScrollToTop />
-
-      {/* Header */}
       <Header />
 
-      {/* Main Content */}
       <Box component="main" sx={{ flex: 1 }}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/menu" element={<MenuPage />} />
-          <Route path="/gaming" element={<PCStatusPage />} />
-        </Routes>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Routes location={location}>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/menu" element={<MenuPage />} />
+              <Route path="/gaming" element={<PCStatusPage />} />
+            </Routes>
+          </motion.div>
+        </AnimatePresence>
       </Box>
 
-      {/* Footer */}
       <Footer />
     </Box>
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+const App: React.FC = () => (
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <MotionConfig reducedMotion="user">
       <Router>
         <CartProvider>
           <AppContent />
         </CartProvider>
       </Router>
-    </ThemeProvider>
-  );
-};
+    </MotionConfig>
+  </ThemeProvider>
+);
 
 export default App;

@@ -1,80 +1,132 @@
-import React, { useState } from "react";
-import { Fab, Badge } from "@mui/material";
-import { ShoppingCart } from "@mui/icons-material";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { Box } from "@mui/material";
+import { ShoppingBagOutlined, ArrowForward } from "@mui/icons-material";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { useCart } from "../../context/CartContext";
+import { tokens } from "@theme/theme";
+import { formatUSD } from "@utils/helpers";
 import CartDrawer from "./CartDrawer";
 
+/** Sticky "View order" bar along the bottom of the screen; bumps whenever something is added. */
 const FloatingCart: React.FC = () => {
-  const { getTotalItems } = useCart();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { getTotalItems, getTotalPrice, addCount } = useCart();
+  const [open, setOpen] = useState(false);
+  const controls = useAnimationControls();
   const totalItems = getTotalItems();
+  const total = getTotalPrice();
+
+  const hasItems = useRef(false);
+  hasItems.current = totalItems > 0;
+
+  useEffect(() => {
+    // Only animate when the bar is actually on screen (controls must be bound)
+    if (addCount > 0 && hasItems.current) {
+      controls.start({ scale: [1, 1.045, 1], transition: { duration: 0.35 } });
+    }
+  }, [addCount, controls]);
 
   return (
     <>
       <AnimatePresence>
         {totalItems > 0 && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            key="cart-bar"
+            initial={{ y: 120 }}
+            animate={{ y: 0 }}
+            exit={{ y: 120 }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1100,
+              padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
+              pointerEvents: "none",
+              background: "linear-gradient(180deg, transparent, rgba(22,28,51,0.9) 55%)",
+            }}
           >
-            <Badge
-              badgeContent={totalItems}
-              color="error"
-              sx={{
-                position: "fixed",
-                bottom: { xs: 80, md: 100 },
-                right: { xs: 16, md: 32 },
-                zIndex: 9998,
-                "& .MuiBadge-badge": {
-                  fontSize: "0.9rem",
-                  fontWeight: 700,
-                  fontFamily: "Orbitron",
-                  minWidth: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  border: "3px solid #0A1929",
-                  top: -4,
-                  right: -4,
-                  zIndex: 9999,
-                  boxShadow: "0 4px 12px rgba(194, 161, 158, 0.6)",
-                  animation: "pulse 1.5s ease-in-out infinite",
-                  "@keyframes pulse": {
-                    "0%, 100%": { transform: "scale(1)" },
-                    "50%": { transform: "scale(1.2)" },
-                  },
-                },
+            <motion.button
+              animate={controls}
+              onClick={() => setOpen(true)}
+              aria-label={`View order, ${totalItems} items, ${formatUSD(total.usd)}`}
+              style={{
+                pointerEvents: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                width: "100%",
+                maxWidth: 560,
+                margin: "0 auto",
+                height: 60,
+                padding: "0 10px 0 10px",
+                border: "none",
+                borderRadius: 999,
+                background: tokens.cyan,
+                color: "#000",
+                font: "inherit",
+                boxShadow: "0 12px 40px rgba(0,206,209,0.25), 0 4px 16px rgba(0,0,0,0.6)",
               }}
             >
-              <Fab
-                color="primary"
-                onClick={() => setDrawerOpen(true)}
-                component={motion.button}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+              <Box
                 sx={{
-                  width: { xs: 64, md: 72 },
-                  height: { xs: 64, md: 72 },
-                  background:
-                    "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                  boxShadow: "0 8px 32px rgba(0,206,209,0.5)",
-                  "&:hover": {
-                    background:
-                      "linear-gradient(135deg, #5FE3E6 0%, #BA7FED 100%)",
-                    boxShadow: "0 12px 48px rgba(155,81,224,0.7)",
-                  },
+                  position: "relative",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#000",
+                  color: tokens.text,
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
                 }}
               >
-                <ShoppingCart sx={{ fontSize: { xs: 28, md: 32 } }} />
-              </Fab>
-            </Badge>
+                <ShoppingBagOutlined sx={{ fontSize: 20 }} />
+                <Box
+                  component={motion.span}
+                  key={totalItems}
+                  initial={{ scale: 0.4 }}
+                  animate={{ scale: 1 }}
+                  sx={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    minWidth: 20,
+                    height: 20,
+                    px: 0.5,
+                    borderRadius: 999,
+                    background: tokens.text,
+                    color: "#000",
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    display: "grid",
+                    placeItems: "center",
+                    border: `2px solid ${tokens.cyan}`,
+                  }}
+                >
+                  {totalItems}
+                </Box>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "left", fontWeight: 700, fontSize: "1rem" }}>View order</Box>
+              <Box sx={{ fontWeight: 800, fontSize: "1.05rem" }}>{formatUSD(total.usd)}</Box>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.12)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <ArrowForward sx={{ fontSize: 20 }} />
+              </Box>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <CartDrawer open={open} onClose={() => setOpen(false)} />
     </>
   );
 };

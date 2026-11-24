@@ -1,385 +1,208 @@
 import React from "react";
+import { Box, Button, Container, Grid, Stack, Typography } from "@mui/material";
+import type { SvgIconComponent } from "@mui/icons-material";
 import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Stack,
-  Card,
-  CardContent,
-  Button,
-} from "@mui/material";
-import { motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
-import {
+  AccessTime,
+  ArrowForward,
+  Directions,
   LocationOn,
   Phone,
-  Email,
-  AccessTime,
-  Directions,
+  Restaurant,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import Reveal from "@components/common/Reveal";
+import Magnetic from "@components/common/Magnetic";
 import { CONTACT_INFO, OPENING_HOURS } from "@utils/constants";
+import { tokens } from "@theme/theme";
 
+const MAPS_URL = "https://maps.google.com/?q=Sawfar+badghan+main+road+near+habibi+cut";
+
+const InfoRow: React.FC<{
+  Icon: SvgIconComponent;
+  label: string;
+  children: React.ReactNode;
+  color?: string;
+}> = ({ Icon, label, children, color = tokens.cyan }) => (
+  <Stack direction="row" spacing={2} alignItems="flex-start">
+    <Box
+      sx={{
+        width: 40,
+        height: 40,
+        borderRadius: "12px",
+        display: "grid",
+        placeItems: "center",
+        flexShrink: 0,
+        color,
+        background: `${color}14`,
+        border: `1px solid ${color}2e`,
+      }}
+    >
+      <Icon sx={{ fontSize: 20 }} />
+    </Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography
+        sx={{
+          color: tokens.textDim,
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          mb: 0.25,
+        }}
+      >
+        {label}
+      </Typography>
+      <Box sx={{ color: tokens.text, fontSize: { xs: "0.98rem", md: "1.05rem" }, lineHeight: 1.5 }}>
+        {children}
+      </Box>
+    </Box>
+  </Stack>
+);
+
+/** Final "Visit us" section: location, hours, contact and the main calls to action. */
 const Location: React.FC = () => {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
-
-  const handleGetDirections = () => {
-    window.open(
-      "https://maps.google.com/?q=Sawfar+badghan+main+road+near+habibi+cut",
-      "_blank"
-    );
-  };
+  const navigate = useNavigate();
+  const telHref = `tel:${CONTACT_INFO.phone.replace(/\s+/g, "")}`;
 
   return (
     <Box
-      sx={{
-        py: { xs: 8, md: 12 },
-        background: "#0A1929",
-        position: "relative",
-      }}
+      component="section"
+      id="location"
+      sx={{ py: { xs: 9, md: 14 }, position: "relative", overflow: "hidden", scrollMarginTop: 56 }}
     >
-      <Container maxWidth="lg" ref={ref}>
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-        >
-          <Stack
-            spacing={2}
-            alignItems="center"
-            textAlign="center"
-            sx={{ mb: 8 }}
+      {/* Soft glow */}
+      <Box
+        aria-hidden="true"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `radial-gradient(600px circle at 15% 60%, ${tokens.cyan}1a, transparent 60%), radial-gradient(700px circle at 90% 30%, ${tokens.purple}1f, transparent 60%)`,
+        }}
+      />
+
+      <Container maxWidth="lg" sx={{ position: "relative" }}>
+        <Reveal>
+          <Box
+            sx={{
+              borderRadius: { xs: "24px", md: "28px" },
+              border: `1px solid ${tokens.border}`,
+              background: "rgba(11,11,14,0.8)",
+              backdropFilter: "blur(12px)",
+              overflow: "hidden",
+            }}
           >
-            <Typography
-              variant="h2"
-              sx={{
-                fontFamily: "Orbitron",
-                fontWeight: 800,
-                fontSize: { xs: "2.5rem", md: "3.5rem" },
-                background: "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              VISIT US
-            </Typography>
-            <Typography
-              variant="h5"
-              sx={{
-                color: "#B2BAC2",
-                maxWidth: "700px",
-                fontSize: { xs: "1.1rem", md: "1.3rem" },
-              }}
-            >
-              Find us in Sawfar, badghan
-            </Typography>
-          </Stack>
-        </motion.div>
-
-        <Grid container spacing={4}>
-          {/* Contact Information */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={inView ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: 0.2, duration: 0.6 }}
-            >
-              <Stack spacing={3}>
-                {/* Address */}
-                <Card
-                  sx={{
-                    background: "rgba(19, 47, 76, 0.6)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(0,206,209,0.3)",
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      border: "1px solid rgba(0,206,209,0.8)",
-                      boxShadow: "0 10px 30px rgba(0,206,209,0.3)",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Box
-                        sx={{
-                          color: "#00CED1",
-                          mt: 0.5,
-                        }}
-                      >
-                        <LocationOn sx={{ fontSize: 30 }} />
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: "Orbitron",
-                            fontWeight: 700,
-                            color: "#00CED1",
-                            mb: 1,
-                          }}
-                        >
-                          Address
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: "#B2BAC2",
-                            lineHeight: 1.7,
-                          }}
-                        >
-                          {CONTACT_INFO.address}
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          startIcon={<Directions />}
-                          onClick={handleGetDirections}
-                          sx={{
-                            mt: 2,
-                            color: "#00CED1",
-                            borderColor: "#00CED1",
-                            "&:hover": {
-                              borderColor: "#9B51E0",
-                              color: "#9B51E0",
-                              background: "rgba(155,81,224,0.1)",
-                            },
-                          }}
-                        >
-                          Get Directions
-                        </Button>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                {/* Phone */}
-                <Card
-                  sx={{
-                    background: "rgba(19, 47, 76, 0.6)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(155,81,224,0.3)",
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      border: "1px solid rgba(155,81,224,0.8)",
-                      boxShadow: "0 10px 30px rgba(155,81,224,0.3)",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <Box sx={{ color: "#9B51E0" }}>
-                        <Phone sx={{ fontSize: 30 }} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: "Orbitron",
-                            fontWeight: 700,
-                            color: "#9B51E0",
-                            mb: 0.5,
-                          }}
-                        >
-                          Call Us
-                        </Typography>
-                        <Typography
-                          component="a"
-                          href={`tel:${CONTACT_INFO.phone}`}
-                          sx={{
-                            color: "#B2BAC2",
-                            fontSize: "1.1rem",
-                            textDecoration: "none",
-                            "&:hover": {
-                              color: "#9B51E0",
-                            },
-                          }}
-                        >
-                          {CONTACT_INFO.phone}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                {/* Email */}
-                <Card
-                  sx={{
-                    background: "rgba(19, 47, 76, 0.6)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(0,255,136,0.3)",
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      border: "1px solid rgba(0,255,136,0.8)",
-                      boxShadow: "0 10px 30px rgba(0,255,136,0.3)",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <Box sx={{ color: "#00FF88" }}>
-                        <Email sx={{ fontSize: 30 }} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: "Orbitron",
-                            fontWeight: 700,
-                            color: "#00FF88",
-                            mb: 0.5,
-                          }}
-                        >
-                          Email
-                        </Typography>
-                        <Typography
-                          component="a"
-                          href={`mailto:${CONTACT_INFO.email}`}
-                          sx={{
-                            color: "#B2BAC2",
-                            fontSize: "1.1rem",
-                            textDecoration: "none",
-                            "&:hover": {
-                              color: "#00FF88",
-                            },
-                          }}
-                        >
-                          {CONTACT_INFO.email}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Stack>
-            </motion.div>
-          </Grid>
-
-          {/* Opening Hours */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={inView ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: 0.4, duration: 0.6 }}
-            >
-              <Card
-                sx={{
-                  height: "100%",
-                  background:
-                    "linear-gradient(135deg, rgba(0,206,209,0.1) 0%, rgba(155,81,224,0.1) 100%)",
-                  backdropFilter: "blur(10px)",
-                  border: "2px solid",
-                  borderImage: "linear-gradient(135deg, #00CED1, #9B51E0) 1",
-                }}
-              >
-                <CardContent sx={{ p: 4 }}>
-                  <Stack spacing={3}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <AccessTime
-                        sx={{
-                          fontSize: 60,
-                          color: "#00CED1",
-                          mb: 2,
-                        }}
-                      />
-                      <Typography
-                        variant="h4"
-                        sx={{
-                          fontFamily: "Orbitron",
-                          fontWeight: 700,
-                          color: "#FFFFFF",
-                          mb: 1,
-                        }}
-                      >
-                        Opening Hours
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                          fontSize: "1rem",
-                        }}
-                      >
-                        We're open for your gaming pleasure!
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ mt: 4 }}>
-                      {OPENING_HOURS.map((schedule, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            p: 2,
-                            mb: 2,
-                            background: "rgba(19, 47, 76, 0.5)",
-                            borderRadius: 2,
-                            border: "1px solid rgba(255,255,255,0.1)",
-                          }}
-                        >
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: "#FFFFFF",
-                              fontWeight: 600,
-                              fontSize: "1.1rem",
-                            }}
-                          >
-                            {schedule.day}
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: "#00CED1",
-                              fontWeight: 700,
-                              fontSize: "1.1rem",
-                              fontFamily: "Orbitron",
-                            }}
-                          >
-                            {schedule.hours}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-
-                    <Box
-                      sx={{
-                        mt: 3,
-                        p: 3,
-                        background: "rgba(0,206,209,0.1)",
+            <Grid container>
+              {/* CTA */}
+              <Grid size={{ xs: 12, md: 7 }}>
+                <Box sx={{ p: { xs: 3, sm: 4, md: 5, lg: 6 }, height: "100%", display: "flex", flexDirection: "column" }}>
+                  <Typography
+                    variant="overline"
+                    component="p"
+                    sx={{
+                      color: tokens.cyan,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 1.25,
+                      mb: 1.5,
+                      "&::before": {
+                        content: '""',
+                        width: 18,
+                        height: 2,
                         borderRadius: 2,
-                        border: "1px solid rgba(0,206,209,0.3)",
-                        textAlign: "center",
-                      }}
+                        background: tokens.cyan,
+                      },
+                    }}
+                  >
+                    Visit us
+                  </Typography>
+                  <Typography
+                    variant="h2"
+                    sx={{ fontSize: { xs: "2rem", sm: "2.6rem", md: "3.4rem" }, textTransform: "uppercase", mb: 2 }}
+                  >
+                    Ready to <span className="gradient-text">play?</span>
+                  </Typography>
+                  <Typography sx={{ color: tokens.textMuted, fontSize: { xs: "1rem", md: "1.1rem" }, maxWidth: 460, mb: 4 }}>
+                    No reservation needed. Just show up and game!
+                  </Typography>
+
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mt: "auto" }}>
+                    <Magnetic>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<Restaurant />}
+                        endIcon={<ArrowForward />}
+                        onClick={() => navigate("/menu")}
+                        sx={{ width: { xs: "100%", sm: "auto" } }}
+                      >
+                        View menu
+                      </Button>
+                    </Magnetic>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Directions />}
+                      href={MAPS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          color: "#00CED1",
-                          fontWeight: 700,
-                          mb: 1,
-                        }}
-                      >
-                        🎮 Walk-ins Welcome!
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                        }}
-                      >
-                        No reservation needed. Just show up and game!
-                      </Typography>
-                    </Box>
+                      Get directions
+                    </Button>
+                    <Button variant="outlined" startIcon={<Phone />} href={telHref}>
+                      Call now
+                    </Button>
                   </Stack>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
-        </Grid>
+                </Box>
+              </Grid>
+
+              {/* Details */}
+              <Grid size={{ xs: 12, md: 5 }}>
+                <Stack
+                  spacing={3}
+                  sx={{
+                    p: { xs: 3, sm: 4, md: 5, lg: 6 },
+                    height: "100%",
+                    justifyContent: "center",
+                    borderTop: { xs: `1px solid ${tokens.border}`, md: "none" },
+                    borderLeft: { md: `1px solid ${tokens.border}` },
+                    background: "rgba(255,255,255,0.015)",
+                  }}
+                >
+                  <InfoRow Icon={LocationOn} label="Address">
+                    <Box
+                      component="a"
+                      href={MAPS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ color: "inherit", textDecoration: "none", "&:hover": { color: tokens.cyan } }}
+                    >
+                      {CONTACT_INFO.address}
+                    </Box>
+                  </InfoRow>
+                  <InfoRow Icon={AccessTime} label="Opening hours" color={tokens.purple}>
+                    {OPENING_HOURS.map((schedule) => (
+                      <Box key={schedule.day} sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+                        <span>{schedule.day}</span>
+                        <Box component="span" sx={{ color: tokens.textMuted }}>
+                          {schedule.hours}
+                        </Box>
+                      </Box>
+                    ))}
+                  </InfoRow>
+                  <InfoRow Icon={Phone} label="Phone">
+                    <Box
+                      component="a"
+                      href={telHref}
+                      sx={{ color: "inherit", textDecoration: "none", "&:hover": { color: tokens.cyan } }}
+                    >
+                      {CONTACT_INFO.phone}
+                    </Box>
+                  </InfoRow>
+                </Stack>
+              </Grid>
+            </Grid>
+          </Box>
+        </Reveal>
       </Container>
     </Box>
   );

@@ -1,371 +1,135 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  Box,
-  Stack,
-  Chip,
-  IconButton,
-} from "@mui/material";
-import { motion } from "framer-motion";
-import { Product } from "../../types/index";
-import { AddShoppingCart } from "@mui/icons-material";
+import React, { useState } from "react";
+import { Box, Typography, alpha } from "@mui/material";
+import type { SvgIconComponent } from "@mui/icons-material";
+import type { Product } from "../../types/index";
 import { useCart } from "../../context/CartContext";
+import { tokens } from "@theme/theme";
+import { formatLBP, formatUSD, haptic } from "@utils/helpers";
+import QtyStepper from "./QtyStepper";
 
 interface ProductCardProps {
   product: Product;
-  index: number;
+  accent: string;
+  Icon: SvgIconComponent;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, index }) => {
-  const { addItem } = useCart();
-  const hasImage = product.image && product.image !== "";
+/**
+ * One menu item as a clear row: photo (or a coloured category icon), name,
+ * short description, price, and the add / quantity control.
+ */
+const ProductCard: React.FC<ProductCardProps> = ({ product, accent, Icon }) => {
+  const { addItem, updateQuantity, getQuantity } = useCart();
+  const [imgOk, setImgOk] = useState(true);
+  const qty = getQuantity(product.id);
+  const hasImage = !!product.image && imgOk;
+  const inCart = qty > 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const add = () => {
+    haptic();
     addItem(product);
   };
+  const remove = () => {
+    haptic();
+    updateQuantity(product.id, qty - 1);
+  };
 
-  // Compact list-style card for products WITHOUT images
-  if (!hasImage) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: index * 0.03, duration: 0.3 }}
-      >
-        <Card
-          sx={{
-            background: "rgba(19, 47, 76, 0.3)",
-            backdropFilter: "blur(10px)",
-            border: "1px solid rgba(0,206,209,0.1)",
-            borderRadius: 2,
-            overflow: "hidden",
-            transition: "all 0.3s ease",
-            "&:hover": {
-              border: "1px solid rgba(0,206,209,0.4)",
-              boxShadow: "0 4px 20px rgba(0,206,209,0.15)",
-              transform: "translateX(4px)",
-            },
-          }}
-        >
-          <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              {/* Left: Product Info */}
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack spacing={0.5}>
-                  {/* Name & Category */}
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    flexWrap="wrap"
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontFamily: "Rajdhani",
-                        fontWeight: 700,
-                        fontSize: { xs: "1rem", sm: "1.1rem" },
-                        color: "#FFFFFF",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {product.name}
-                    </Typography>
-                    <Chip
-                      label={product.category.name}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        backgroundColor: "rgba(0,206,209,0.15)",
-                        color: "#00CED1",
-                        fontWeight: 600,
-                        fontSize: "0.7rem",
-                        "& .MuiChip-label": { px: 1 },
-                      }}
-                    />
-                  </Stack>
-
-                  {/* Description */}
-                  {product.description && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#B2BAC2",
-                        fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                        lineHeight: 1.4,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {product.description}
-                    </Typography>
-                  )}
-                </Stack>
-              </Box>
-
-              {/* Right: Prices & Add Button */}
-              <Stack
-                spacing={1}
-                alignItems="flex-end"
-                sx={{ minWidth: "fit-content" }}
-              >
-                <Stack spacing={0.5} alignItems="flex-end">
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontFamily: "Orbitron",
-                      fontWeight: 700,
-                      color: "#00CED1",
-                      fontSize: { xs: "1.1rem", sm: "1.3rem" },
-                      lineHeight: 1,
-                    }}
-                  >
-                    ${product.pricing.usd.toFixed(2)}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontFamily: "Rajdhani",
-                      fontWeight: 600,
-                      color: "#9B51E0",
-                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
-                      lineHeight: 1,
-                    }}
-                  >
-                    {product.pricing.lbp.toLocaleString()} LBP
-                  </Typography>
-                </Stack>
-
-                {/* Add to Cart Button */}
-                <IconButton
-                  onClick={handleAddToCart}
-                  component={motion.button}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  sx={{
-                    background:
-                      "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                    color: "#FFFFFF",
-                    width: 36,
-                    height: 36,
-                    "&:hover": {
-                      background:
-                        "linear-gradient(135deg, #5FE3E6 0%, #BA7FED 100%)",
-                      boxShadow: "0 4px 12px rgba(0,206,209,0.4)",
-                    },
-                  }}
-                >
-                  <AddShoppingCart sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-      </motion.div>
-    );
-  }
-
-  // Image card for products WITH images (compact version)
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03, duration: 0.3 }}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: { xs: 1.5, md: 1.75 },
+        height: "100%",
+        p: { xs: 1.25, md: 1.5 },
+        pr: { xs: 1.5, md: 1.75 },
+        borderRadius: "18px",
+        background: inCart ? `linear-gradient(90deg, ${alpha(tokens.cyan, 0.09)}, ${tokens.menuCard} 60%)` : tokens.menuCard,
+        border: `1px solid ${inCart ? alpha(tokens.cyan, 0.5) : tokens.menuBorder}`,
+        boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(10,8,30,0.35)",
+        transition: "border-color .25s ease, background-color .25s ease, transform .25s ease",
+        "&:hover": {
+          background: inCart ? undefined : tokens.menuCardHover,
+          borderColor: inCart ? alpha(tokens.cyan, 0.7) : "rgba(255,255,255,0.14)",
+        },
+      }}
     >
-      <Card
+      {/* Photo or category icon */}
+      <Box
         sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background: "rgba(19, 47, 76, 0.3)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(0,206,209,0.1)",
-          borderRadius: 2,
+          position: "relative",
+          width: { xs: 64, md: 72 },
+          height: { xs: 64, md: 72 },
+          flexShrink: 0,
+          borderRadius: "14px",
           overflow: "hidden",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-6px)",
-            border: "1px solid rgba(0,206,209,0.4)",
-            boxShadow: "0 8px 30px rgba(0,206,209,0.2)",
-            "& .product-image": {
-              transform: "scale(1.05)",
-            },
-          },
+          display: "grid",
+          placeItems: "center",
+          background: hasImage
+            ? tokens.surfaceRaised
+            : `radial-gradient(120% 120% at 20% 0%, ${alpha(accent, 0.32)}, ${alpha(accent, 0.08)} 70%)`,
+          border: `1px solid ${alpha(accent, hasImage ? 0.15 : 0.3)}`,
         }}
       >
-        {/* Image - Compact */}
-        <Box
-          sx={{
-            position: "relative",
-            paddingTop: "60%", // 5:3 aspect ratio (shorter than before)
-            overflow: "hidden",
-            backgroundColor: "rgba(10, 25, 41, 0.6)",
-          }}
-        >
-          <CardMedia
+        {hasImage ? (
+          <Box
             component="img"
-            image={product.image}
+            src={product.image}
             alt={product.name}
-            className="product-image"
-            onError={(e: any) => {
-              e.target.style.display = "none";
-            }}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transition: "transform 0.3s ease",
-            }}
+            loading="lazy"
+            onError={() => setImgOk(false)}
+            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
+        ) : (
+          <Icon sx={{ color: accent, fontSize: { xs: 28, md: 32 } }} />
+        )}
+      </Box>
 
-          {/* Category Badge */}
-          <Chip
-            label={product.category.name}
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              backgroundColor: "rgba(0,206,209,0.9)",
-              color: "#0A1929",
-              fontWeight: 700,
-              fontSize: "0.7rem",
-              height: 22,
-              backdropFilter: "blur(10px)",
-            }}
-          />
-        </Box>
-
-        {/* Content - Compact */}
-        <CardContent
+      {/* Text */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
           sx={{
-            flexGrow: 1,
-            p: { xs: 1.5, sm: 2 },
-            display: "flex",
-            flexDirection: "column",
+            fontWeight: 600,
+            fontSize: { xs: "1rem", md: "1.05rem" },
+            lineHeight: 1.25,
+            color: "#fff",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
-          {/* Product Name */}
+          {product.name}
+        </Typography>
+        {product.description && (
           <Typography
-            variant="h6"
             sx={{
-              fontFamily: "Rajdhani",
-              fontWeight: 700,
-              fontSize: { xs: "1rem", sm: "1.1rem" },
-              color: "#FFFFFF",
-              mb: 0.5,
-              lineHeight: 1.3,
+              mt: 0.25,
+              color: tokens.menuText,
+              fontSize: "0.82rem",
+              lineHeight: 1.4,
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}
           >
-            {product.name}
+            {product.description}
           </Typography>
+        )}
+        <Box sx={{ mt: 0.75, display: "flex", alignItems: "baseline", columnGap: 1, flexWrap: "wrap" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.05rem", color: accent, lineHeight: 1.3 }}>
+            {formatUSD(product.pricing.usd)}
+          </Typography>
+          <Typography sx={{ color: tokens.menuTextDim, fontSize: "0.78rem", fontWeight: 500 }}>
+            {formatLBP(product.pricing.lbp)}
+          </Typography>
+        </Box>
+      </Box>
 
-          {/* Description - Compact */}
-          {product.description && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#B2BAC2",
-                mb: 1.5,
-                lineHeight: 1.4,
-                fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {product.description}
-            </Typography>
-          )}
-
-          {/* Spacer */}
-          <Box sx={{ flexGrow: 1 }} />
-
-          {/* Price Section - Compact */}
-          <Box
-            sx={{
-              mt: "auto",
-              pt: 1.5,
-              borderTop: "1px solid rgba(0,206,209,0.1)",
-            }}
-          >
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              spacing={1}
-            >
-              {/* Prices */}
-              <Stack spacing={0.5}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: "Orbitron",
-                    fontWeight: 700,
-                    color: "#00CED1",
-                    fontSize: { xs: "1.1rem", sm: "1.3rem" },
-                  }}
-                >
-                  ${product.pricing.usd.toFixed(2)}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: "Rajdhani",
-                    fontWeight: 600,
-                    color: "#9B51E0",
-                    fontSize: { xs: "0.75rem", sm: "0.85rem" },
-                  }}
-                >
-                  {product.pricing.lbp.toLocaleString()} LBP
-                </Typography>
-              </Stack>
-
-              {/* Add to Cart Button */}
-              <IconButton
-                onClick={handleAddToCart}
-                component={motion.button}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                sx={{
-                  background:
-                    "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                  color: "#FFFFFF",
-                  width: 40,
-                  height: 40,
-                  "&:hover": {
-                    background:
-                      "linear-gradient(135deg, #5FE3E6 0%, #BA7FED 100%)",
-                    boxShadow: "0 4px 12px rgba(0,206,209,0.4)",
-                  },
-                }}
-              >
-                <AddShoppingCart sx={{ fontSize: 20 }} />
-              </IconButton>
-            </Stack>
-          </Box>
-        </CardContent>
-      </Card>
-    </motion.div>
+      <Box sx={{ flexShrink: 0 }}>
+        <QtyStepper quantity={qty} onAdd={add} onRemove={remove} name={product.name} />
+      </Box>
+    </Box>
   );
 };
 
