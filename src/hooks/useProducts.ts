@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { menuApi } from "@services/api";
-import { Product, GroupedProducts } from "../types/index";
+import type { Product, GroupedProducts } from "../types/index";
+
+const groupByCategory = (data: Product[]): GroupedProducts =>
+  data.reduce((acc, product) => {
+    const categoryId = product.category.id;
+    if (!acc[categoryId]) acc[categoryId] = { category: product.category, products: [] };
+    acc[categoryId].products.push(product);
+    return acc;
+  }, {} as GroupedProducts);
 
 export const useMenuProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -8,40 +16,26 @@ export const useMenuProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const data = await menuApi.getMenuProducts();
-        setProducts(data);
-
-        // Group products by category
-        const grouped = data.reduce((acc, product) => {
-          const categoryId = product.category.id;
-          if (!acc[categoryId]) {
-            acc[categoryId] = {
-              category: product.category,
-              products: [],
-            };
-          }
-          acc[categoryId].products.push(product);
-          return acc;
-        }, {} as GroupedProducts);
-
-        setGroupedProducts(grouped);
-        setError(null);
-      } catch (err) {
-        setError("Failed to load menu items");
-        console.error("Error fetching products:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await menuApi.getMenuProducts();
+      setProducts(data);
+      setGroupedProducts(groupByCategory(data));
+    } catch (err) {
+      setError("We couldn't load the menu. Check your connection and try again.");
+      console.error("Error fetching products:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { products, groupedProducts, loading, error };
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  return { products, groupedProducts, loading, error, retry: fetchProducts };
 };
 
 export const useExchangeRate = () => {
@@ -49,18 +43,11 @@ export const useExchangeRate = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRate = async () => {
-      try {
-        const data = await menuApi.getExchangeRate();
-        setRate(data.rate);
-      } catch (err) {
-        console.error("Error fetching exchange rate:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRate();
+    menuApi
+      .getExchangeRate()
+      .then((data) => setRate(data.rate))
+      .catch((err) => console.error("Error fetching exchange rate:", err))
+      .finally(() => setLoading(false));
   }, []);
 
   return { rate, loading };

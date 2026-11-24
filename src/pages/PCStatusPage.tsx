@@ -1,549 +1,497 @@
-import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Stack,
-  CircularProgress,
-  Alert,
-  Chip,
-  IconButton,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
-import { motion } from "framer-motion";
-import {
-  SportsEsports,
-  CheckCircle,
-  Cancel,
-  Build,
-  Refresh,
-} from "@mui/icons-material";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Box, Button, Container, IconButton, Tooltip, Typography, alpha } from "@mui/material";
+import { AnimatePresence, motion } from "framer-motion";
+import { ErrorOutline, Refresh } from "@mui/icons-material";
 import PCGrid3D from "@/components/gaming/PCGrid3D";
-import { Button } from "@mui/material";
-import { menuApi, PCStats, PCStatus } from "../services/api";
+import { STATUS_META, sortPcs, statusColor } from "@/components/gaming/statusMeta";
+import { menuApi } from "../services/api";
+import type { PCStats, PCStatus } from "../services/api";
+import { tokens } from "@theme/theme";
 
-const PCStatusPage: React.FC = () => {
-  const [pcs, setPcs] = useState<PCStatus[]>([]);
+const POLL_MS = 30_000;
+
+/* ------------------------------------------------------------------ */
+/* Data: initial load + silent polling, paused while the tab is hidden */
+/* ------------------------------------------------------------------ */
+
+const usePCStatus = () => {
+  const [pcs, setPcs] = useState<PCStatus[] | null>(null);
   const [stats, setStats] = useState<PCStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const inFlight = useRef(false);
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
-  const fetchPCStatus = async () => {
+  const load = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setFetching(true);
     try {
-      setLoading(true);
       const data = await menuApi.getPCStatus();
-      setPcs(data.pcs);
-      setStats(data.stats);
+      setPcs(data.pcs ?? []);
+      setStats(data.stats ?? null);
       setError(null);
+      setUpdatedAt(Date.now());
     } catch (err) {
-      setError("Failed to load PC status. Please try again.");
       console.error(err);
+      setError("Couldn't reach the lounge right now.");
     } finally {
-      setLoading(false);
+      inFlight.current = false;
+      setFetching(false);
     }
-  };
-
-  useEffect(() => {
-    fetchPCStatus();
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchPCStatus, 30000);
-    return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #0A1929 0%, #1a237e 100%)",
-        }}
-      >
-        <CircularProgress size={60} sx={{ color: "#00CED1" }} />
-      </Box>
-    );
-  }
+  useEffect(() => {
+    let timer: number | undefined;
+    const stop = () => {
+      if (timer) window.clearInterval(timer);
+      timer = undefined;
+    };
+    const start = () => {
+      stop();
+      timer = window.setInterval(load, POLL_MS);
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        load();
+        start();
+      }
+    };
 
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 10 }}>
-        <Alert severity="error" sx={{ fontSize: "1.1rem" }}>
-          {error}
-        </Alert>
-      </Container>
-    );
-  }
+    load();
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [load]);
+
+  return { pcs, stats, fetching, error, updatedAt, reload: load };
+};
+
+/* ------------------------------------------------------------------ */
+/* Small pieces                                                        */
+/* ------------------------------------------------------------------ */
+
+const formatAgo = (seconds: number) => {
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
+};
+
+const LiveIndicator: React.FC<{ updatedAt: number | null; stale: boolean }> = ({ updatedAt, stale }) => {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const color = stale ? tokens.amber : tokens.green;
 
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0A1929 0%, #1a237e 100%)",
-        py: { xs: 2, md: 8 },
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 1,
+        px: 1.5,
+        py: 0.75,
+        borderRadius: 999,
+        border: `1px solid ${tokens.border}`,
+        background: tokens.surface,
+        fontSize: "0.85rem",
+        color: tokens.textMuted,
+        whiteSpace: "nowrap",
       }}
     >
-      {/* Animated Background Grid */}
       <Box
         sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.05,
-          backgroundImage: `
-            repeating-linear-gradient(0deg, transparent, transparent 2px, #00CED1 2px, #00CED1 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, #9B51E0 2px, #9B51E0 4px)
-          `,
-          backgroundSize: "100px 100px",
-          animation: "gridMove 20s linear infinite",
-          "@keyframes gridMove": {
-            "0%": { transform: "translate(0, 0)" },
-            "100%": { transform: "translate(100px, 100px)" },
-          },
-          pointerEvents: "none",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: color,
+          color: alpha(color, 0.6),
+          animation: stale ? "none" : "pulse-dot 2s infinite",
         }}
       />
+      <Box component="span" sx={{ color: tokens.text, fontWeight: 600 }}>
+        {stale ? "Offline" : "Live"}
+      </Box>
+      {updatedAt && (
+        <Box component="span">· updated {formatAgo(Math.max(0, Math.round((now - updatedAt) / 1000)))}</Box>
+      )}
+    </Box>
+  );
+};
 
-      <Container maxWidth="xl" sx={{ position: "relative", zIndex: 1 }}>
-        <Stack spacing={{ xs: 3, md: 6 }}>
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+const AnimatedNumber: React.FC<{ value: number; color: string }> = ({ value, color }) => (
+  <Box sx={{ position: "relative", height: { xs: 36, md: 46 }, overflow: "hidden" }}>
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.span
+        key={value}
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -24, opacity: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        style={{ display: "block" }}
+      >
+        <Typography
+          component="span"
+          sx={{
+            fontFamily: tokens.fontDisplay,
+            fontWeight: 800,
+            fontSize: { xs: "1.9rem", md: "2.5rem" },
+            lineHeight: 1.15,
+            color,
+          }}
+        >
+          {value}
+        </Typography>
+      </motion.span>
+    </AnimatePresence>
+  </Box>
+);
+
+const StatCard: React.FC<{ label: string; value: number; total: number; color: string; showBar?: boolean }> = ({
+  label,
+  value,
+  total,
+  color,
+  showBar = true,
+}) => (
+  <Box
+    sx={{
+      p: { xs: 1.75, md: 2.5 },
+      borderRadius: 4,
+      background: tokens.surface,
+      border: `1px solid ${tokens.border}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: 0.5,
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Box sx={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 10px ${color}` }} />
+      <Typography sx={{ color: tokens.textMuted, fontSize: { xs: "0.8rem", md: "0.88rem" }, fontWeight: 600 }}>
+        {label}
+      </Typography>
+    </Box>
+    <AnimatedNumber value={value} color={showBar ? color : tokens.text} />
+    <Box sx={{ height: 3, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+      <Box
+        sx={{
+          height: "100%",
+          width: `${total > 0 ? (showBar ? (value / total) * 100 : 100) : 0}%`,
+          background: showBar ? color : `linear-gradient(90deg, ${tokens.cyan}, ${tokens.purple})`,
+          borderRadius: 3,
+          transition: "width .6s cubic-bezier(.22,1,.36,1)",
+        }}
+      />
+    </Box>
+  </Box>
+);
+
+const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => void }> = ({ pc, selected, onClick }) => {
+  const color = statusColor(pc.status);
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      sx={{
+        all: "unset",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 0.5,
+        p: { xs: 1.5, md: 1.75 },
+        borderRadius: 3.5,
+        background: selected ? alpha(color, 0.08) : tokens.surface,
+        border: `1px solid ${selected ? alpha(color, 0.7) : tokens.border}`,
+        transition: "background-color .2s ease, border-color .2s ease, transform .2s ease",
+        "&:hover": { borderColor: selected ? color : tokens.borderStrong, background: selected ? alpha(color, 0.1) : tokens.surfaceHover },
+        "&:active": { transform: "scale(0.98)" },
+        "&:focus-visible": { outline: `2px solid ${tokens.cyan}`, outlineOffset: 2 },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+        <Typography
+          sx={{
+            fontFamily: tokens.fontDisplay,
+            fontWeight: 700,
+            fontSize: { xs: "0.88rem", md: "0.95rem" },
+            color: tokens.text,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {pc.name}
+        </Typography>
+        <Box
+          sx={{
+            width: 9,
+            height: 9,
+            flexShrink: 0,
+            borderRadius: "50%",
+            background: color,
+            color: alpha(color, 0.6),
+            boxShadow: `0 0 10px ${alpha(color, 0.8)}`,
+            animation: pc.status === "available" ? "pulse-dot 2.2s infinite" : "none",
+          }}
+        />
+      </Box>
+      <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color, letterSpacing: "0.04em" }}>
+        {STATUS_META[pc.status]?.label ?? pc.status}
+      </Typography>
+      <Typography sx={{ fontSize: "0.78rem", color: tokens.textDim, minHeight: "1.2em" }}>
+        {pc.location || " "}
+      </Typography>
+    </Box>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
+
+const PCStatusPage: React.FC = () => {
+  const { pcs, stats, fetching, error, updatedAt, reload } = usePCStatus();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+
+  const sorted = useMemo(() => (pcs ? sortPcs(pcs) : []), [pcs]);
+  const counts = useMemo(() => {
+    if (stats) return stats;
+    const list = pcs ?? [];
+    return {
+      total: list.length,
+      available: list.filter((p) => p.status === "available").length,
+      occupied: list.filter((p) => p.status === "occupied").length,
+      maintenance: list.filter((p) => p.status === "maintenance").length,
+    };
+  }, [pcs, stats]);
+
+  const initialLoading = pcs === null && !error;
+  const hasData = pcs !== null;
+
+  const selectFromList = (id: string) => {
+    setSelectedId((cur) => (cur === id ? null : id));
+    mapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  return (
+    <Box sx={{ pt: { xs: 3, md: 6 }, pb: { xs: 8, md: 12 } }}>
+      <Container maxWidth="lg">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              alignItems: { xs: "flex-start", md: "flex-end" },
+              justifyContent: "space-between",
+              gap: { xs: 2, md: 4 },
+              mb: { xs: 3, md: 4 },
+            }}
           >
-            <Box sx={{ textAlign: "center", mb: { xs: 2, md: 4 } }}>
-              <Box
+            <Box>
+              <Typography
+                variant="overline"
+                component="p"
                 sx={{
+                  color: tokens.cyan,
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 2,
-                  mb: { xs: 1, md: 2 },
+                  gap: 1.25,
+                  mb: 1,
+                  "&::before": { content: '""', width: 18, height: 2, borderRadius: 2, background: tokens.cyan },
                 }}
               >
-                <SportsEsports
-                  sx={{
-                    fontSize: { xs: 40, md: 60 },
-                    color: "#00CED1",
-                    filter: "drop-shadow(0 0 20px rgba(0,206,209,0.8))",
-                  }}
-                />
-              </Box>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontFamily: "Orbitron",
-                  fontWeight: 900,
-                  background:
-                    "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  mb: { xs: 1, md: 2 },
-                  fontSize: { xs: "1.8rem", sm: "2.5rem", md: "3.5rem" },
-                }}
-              >
-                PC AVAILABILITY
+                Live status
               </Typography>
               <Typography
-                variant="h6"
-                sx={{
-                  color: "#B2BAC2",
-                  fontWeight: 400,
-                  mb: { xs: 2, md: 3 },
-                  fontSize: { xs: "0.9rem", sm: "1rem", md: "1.25rem" },
-                  px: 2,
-                }}
+                variant="h1"
+                sx={{ fontSize: { xs: "2rem", sm: "2.6rem", md: "3.3rem" }, textTransform: "uppercase" }}
               >
-                Real-time status of our gaming stations
+                PC availability
               </Typography>
-
-              {/* Refresh Button */}
-              {isMobile ? (
-                <IconButton
-                  onClick={fetchPCStatus}
-                  sx={{
-                    color: "#00CED1",
-                    border: "2px solid #00CED1",
-                    "&:hover": {
-                      color: "#9B51E0",
-                      borderColor: "#9B51E0",
-                      background: "rgba(155,81,224,0.1)",
-                    },
-                  }}
-                >
-                  <Refresh />
-                </IconButton>
-              ) : (
-                <Button
-                  variant="outlined"
-                  startIcon={<Refresh />}
-                  onClick={fetchPCStatus}
-                  sx={{
-                    borderColor: "#00CED1",
-                    color: "#00CED1",
-                    fontFamily: "Orbitron",
-                    "&:hover": {
-                      borderColor: "#9B51E0",
-                      color: "#9B51E0",
-                      background: "rgba(155,81,224,0.1)",
-                    },
-                  }}
-                >
-                  Refresh Status
-                </Button>
-              )}
+              <Typography sx={{ color: tokens.textMuted, mt: 1, fontSize: { xs: "0.98rem", md: "1.08rem" } }}>
+                See which gaming stations are free right now, before you head over.
+              </Typography>
             </Box>
-          </motion.div>
 
-          {/* Stats Cards */}
-          {stats && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <LiveIndicator updatedAt={updatedAt} stale={!!error && hasData} />
+              <Tooltip title="Refresh now">
+                <IconButton
+                  onClick={reload}
+                  disabled={fetching}
+                  aria-label="Refresh PC status"
+                  sx={{
+                    border: `1px solid ${tokens.border}`,
+                    background: tokens.surface,
+                    color: tokens.text,
+                    "&:hover": { background: tokens.surfaceHover, borderColor: tokens.borderStrong },
+                    "&.Mui-disabled": { color: tokens.cyan },
+                  }}
+                >
+                  <Refresh
+                    sx={{
+                      fontSize: 20,
+                      animation: fetching ? "spin 0.9s linear infinite" : "none",
+                      "@keyframes spin": { to: { transform: "rotate(360deg)" } },
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </motion.div>
+
+        {/* Error (inline, keeps last known data) */}
+        <AnimatePresence initial={false}>
+          {error && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
             >
-              <Grid container spacing={{ xs: 2, md: 3 }}>
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Card
-                    sx={{
-                      background:
-                        "linear-gradient(135deg, rgba(0,206,209,0.2) 0%, rgba(0,206,209,0.05) 100%)",
-                      backdropFilter: "blur(10px)",
-                      border: "2px solid rgba(0,206,209,0.3)",
-                      boxShadow: "0 8px 32px rgba(0,206,209,0.2)",
-                    }}
-                  >
-                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mb: 1,
-                        }}
-                      >
-                        <CheckCircle
-                          sx={{
-                            fontSize: { xs: 30, sm: 35, md: 40 },
-                            color: "#00CED1",
-                          }}
-                        />
-                      </Box>
-                      <Typography
-                        variant="h3"
-                        sx={{
-                          fontFamily: "Orbitron",
-                          fontWeight: 900,
-                          color: "#00CED1",
-                          fontSize: { xs: "1.8rem", sm: "2.5rem", md: "3rem" },
-                          textAlign: "center",
-                        }}
-                      >
-                        {stats.available}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                          textAlign: "center",
-                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                        }}
-                      >
-                        Available
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Card
-                    sx={{
-                      background:
-                        "linear-gradient(135deg, rgba(255,64,129,0.2) 0%, rgba(255,64,129,0.05) 100%)",
-                      backdropFilter: "blur(10px)",
-                      border: "2px solid rgba(255,64,129,0.3)",
-                      boxShadow: "0 8px 32px rgba(255,64,129,0.2)",
-                    }}
-                  >
-                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mb: 1,
-                        }}
-                      >
-                        <Cancel
-                          sx={{
-                            fontSize: { xs: 30, sm: 35, md: 40 },
-                            color: "#FF4081",
-                          }}
-                        />
-                      </Box>
-                      <Typography
-                        variant="h3"
-                        sx={{
-                          fontFamily: "Orbitron",
-                          fontWeight: 900,
-                          color: "#FF4081",
-                          fontSize: { xs: "1.8rem", sm: "2.5rem", md: "3rem" },
-                          textAlign: "center",
-                        }}
-                      >
-                        {stats.occupied}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                          textAlign: "center",
-                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                        }}
-                      >
-                        Occupied
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Card
-                    sx={{
-                      background:
-                        "linear-gradient(135deg, rgba(255,167,38,0.2) 0%, rgba(255,167,38,0.05) 100%)",
-                      backdropFilter: "blur(10px)",
-                      border: "2px solid rgba(255,167,38,0.3)",
-                      boxShadow: "0 8px 32px rgba(255,167,38,0.2)",
-                    }}
-                  >
-                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mb: 1,
-                        }}
-                      >
-                        <Build
-                          sx={{
-                            fontSize: { xs: 30, sm: 35, md: 40 },
-                            color: "#FFA726",
-                          }}
-                        />
-                      </Box>
-                      <Typography
-                        variant="h3"
-                        sx={{
-                          fontFamily: "Orbitron",
-                          fontWeight: 900,
-                          color: "#FFA726",
-                          fontSize: { xs: "1.8rem", sm: "2.5rem", md: "3rem" },
-                          textAlign: "center",
-                        }}
-                      >
-                        {stats.maintenance}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                          textAlign: "center",
-                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                        }}
-                      >
-                        Maintenance
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Card
-                    sx={{
-                      background:
-                        "linear-gradient(135deg, rgba(155,81,224,0.2) 0%, rgba(155,81,224,0.05) 100%)",
-                      backdropFilter: "blur(10px)",
-                      border: "2px solid rgba(155,81,224,0.3)",
-                      boxShadow: "0 8px 32px rgba(155,81,224,0.2)",
-                    }}
-                  >
-                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mb: 1,
-                        }}
-                      >
-                        <SportsEsports
-                          sx={{
-                            fontSize: { xs: 30, sm: 35, md: 40 },
-                            color: "#9B51E0",
-                          }}
-                        />
-                      </Box>
-                      <Typography
-                        variant="h3"
-                        sx={{
-                          fontFamily: "Orbitron",
-                          fontWeight: 900,
-                          color: "#9B51E0",
-                          fontSize: { xs: "1.8rem", sm: "2.5rem", md: "3rem" },
-                          textAlign: "center",
-                        }}
-                      >
-                        {stats.total}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#B2BAC2",
-                          textAlign: "center",
-                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                        }}
-                      >
-                        Total PCs
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box
+                role="alert"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  flexWrap: "wrap",
+                  mb: 3,
+                  px: 2,
+                  py: 1.5,
+                  borderRadius: 3,
+                  border: `1px solid ${alpha(tokens.red, 0.4)}`,
+                  background: alpha(tokens.red, 0.08),
+                }}
+              >
+                <ErrorOutline sx={{ color: tokens.red }} />
+                <Typography sx={{ flex: 1, minWidth: 180, fontSize: "0.92rem" }}>
+                  {error}{" "}
+                  <Box component="span" sx={{ color: tokens.textMuted }}>
+                    {hasData ? "Showing the last known status." : "Please try again in a moment."}
+                  </Box>
+                </Typography>
+                <Button size="small" variant="outlined" onClick={reload} disabled={fetching}>
+                  Retry
+                </Button>
+              </Box>
             </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* 3D PC Grid Visualization */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-          >
-            <PCGrid3D pcs={pcs} />
-          </motion.div>
+        {/* Stats */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+            gap: { xs: 1.25, md: 2 },
+            mb: { xs: 2.5, md: 3 },
+          }}
+        >
+          {initialLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Box key={i} className="skeleton" sx={{ height: { xs: 104, md: 126 }, borderRadius: 4 }} />
+            ))
+          ) : (
+            <>
+              <StatCard label="Available" value={counts.available} total={counts.total} color={STATUS_META.available.color} />
+              <StatCard label="Occupied" value={counts.occupied} total={counts.total} color={STATUS_META.occupied.color} />
+              <StatCard
+                label="Maintenance"
+                value={counts.maintenance}
+                total={counts.total}
+                color={STATUS_META.maintenance.color}
+              />
+              <StatCard label="Total PCs" value={counts.total} total={counts.total} color={tokens.cyan} showBar={false} />
+            </>
+          )}
+        </Box>
 
-          {/* PC List View - Mobile Friendly */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
+        {/* 3D floor map */}
+        <motion.div
+          ref={mapRef}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          style={{ scrollMarginTop: 96 }}
+        >
+          {initialLoading ? (
+            <Box className="skeleton" sx={{ height: { xs: 330, sm: 460, md: 600 }, borderRadius: { xs: 4, md: 6 } }} />
+          ) : hasData ? (
+            <PCGrid3D pcs={sorted} selectedId={selectedId} onSelect={setSelectedId} />
+          ) : null}
+        </motion.div>
+
+        {/* All stations */}
+        <Box sx={{ mt: { xs: 5, md: 7 } }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              gap: 2,
+              mb: 2,
+            }}
           >
-            <Box sx={{ mt: { xs: 2, md: 4 } }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontFamily: "Orbitron",
-                  fontWeight: 700,
-                  color: "#00CED1",
-                  mb: { xs: 2, md: 3 },
-                  fontSize: { xs: "1.2rem", sm: "1.5rem", md: "1.75rem" },
-                }}
-              >
-                All Stations
+            <Typography
+              variant="h3"
+              sx={{ fontSize: { xs: "1.15rem", md: "1.4rem" }, textTransform: "uppercase", letterSpacing: "0.04em" }}
+            >
+              All stations
+            </Typography>
+            {hasData && (
+              <Typography sx={{ color: tokens.textMuted, fontSize: "0.9rem" }}>
+                <Box component="span" sx={{ color: STATUS_META.available.color, fontWeight: 700 }}>
+                  {counts.available}
+                </Box>{" "}
+                of {counts.total} free
               </Typography>
-              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-                {pcs.map((pc) => (
-                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={pc.pcNumber}>
-                    <Card
-                      sx={{
-                        background: "rgba(10,25,41,0.6)",
-                        backdropFilter: "blur(10px)",
-                        border: `2px solid ${
-                          pc.status === "available"
-                            ? "#00CED1"
-                            : pc.status === "occupied"
-                            ? "#FF4081"
-                            : "#FFA726"
-                        }`,
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          transform: "translateY(-4px)",
-                          boxShadow: `0 8px 32px ${
-                            pc.status === "available"
-                              ? "rgba(0,206,209,0.4)"
-                              : pc.status === "occupied"
-                              ? "rgba(255,64,129,0.4)"
-                              : "rgba(255,167,38,0.4)"
-                          }`,
-                        },
-                      }}
-                    >
-                      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: "Orbitron",
-                            fontWeight: 700,
-                            color:
-                              pc.status === "available"
-                                ? "#00CED1"
-                                : pc.status === "occupied"
-                                ? "#FF4081"
-                                : "#FFA726",
-                            mb: 1,
-                            fontSize: {
-                              xs: "1rem",
-                              sm: "1.15rem",
-                              md: "1.25rem",
-                            },
-                          }}
-                        >
-                          {pc.name}
-                        </Typography>
-                        <Chip
-                          label={pc.status.toUpperCase()}
-                          size="small"
-                          sx={{
-                            background:
-                              pc.status === "available"
-                                ? "rgba(0,206,209,0.2)"
-                                : pc.status === "occupied"
-                                ? "rgba(255,64,129,0.2)"
-                                : "rgba(255,167,38,0.2)",
-                            color:
-                              pc.status === "available"
-                                ? "#00CED1"
-                                : pc.status === "occupied"
-                                ? "#FF4081"
-                                : "#FFA726",
-                            fontFamily: "Orbitron",
-                            fontWeight: 600,
-                            fontSize: { xs: "0.65rem", sm: "0.75rem" },
-                          }}
-                        />
-                        {pc.location && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "#B2BAC2",
-                              display: "block",
-                              mt: 1,
-                              fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                            }}
-                          >
-                            {pc.location}
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" },
+              gap: { xs: 1.25, md: 1.5 },
+            }}
+          >
+            {initialLoading
+              ? Array.from({ length: 10 }).map((_, i) => (
+                  <Box key={i} className="skeleton" sx={{ height: 92, borderRadius: 3.5 }} />
+                ))
+              : sorted.map((pc) => (
+                  <StationCard
+                    key={pc.pcNumber}
+                    pc={pc}
+                    selected={selectedId === pc.pcNumber}
+                    onClick={() => selectFromList(pc.pcNumber)}
+                  />
                 ))}
-              </Grid>
-            </Box>
-          </motion.div>
-        </Stack>
+          </Box>
+
+          {hasData && sorted.length === 0 && (
+            <Typography sx={{ color: tokens.textMuted, textAlign: "center", py: 6 }}>
+              No stations are listed yet. Check back soon.
+            </Typography>
+          )}
+        </Box>
       </Container>
     </Box>
   );

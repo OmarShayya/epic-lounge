@@ -1,138 +1,120 @@
-import React from "react";
-import { Box, Tabs, Tab, Chip } from "@mui/material";
+import { forwardRef, useEffect, useRef } from "react";
+import { Box } from "@mui/material";
 import { motion } from "framer-motion";
-import { GroupedProducts } from "../../types/index";
+import { tokens } from "@theme/theme";
 
-interface CategoryTabsProps {
-  categories: string[];
-  groupedProducts: GroupedProducts;
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
+export interface CategoryChip {
+  id: string;
+  name: string;
+  count: number;
 }
 
-const CategoryTabs: React.FC<CategoryTabsProps> = ({
-  categories,
-  groupedProducts,
-  selectedCategory,
-  onCategoryChange,
-}) => {
-  const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
-    onCategoryChange(newValue);
-  };
+interface CategoryTabsProps {
+  categories: CategoryChip[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}
 
-  // Calculate total products for "All" tab
-  const totalProducts = Object.values(groupedProducts).reduce(
-    (sum, group) => sum + group.products.length,
-    0
-  );
+/**
+ * Sticky, horizontally scrollable category chips. The active chip follows the
+ * section you're reading and is kept centred in view.
+ */
+const CategoryTabs = forwardRef<HTMLDivElement, CategoryTabsProps>(({ categories, activeId, onSelect }, ref) => {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !activeId) return;
+    const chip = scroller.querySelector<HTMLElement>(`[data-chip="${CSS.escape(activeId)}"]`);
+    if (!chip) return;
+    scroller.scrollTo({
+      left: chip.offsetLeft - scroller.clientWidth / 2 + chip.clientWidth / 2,
+      behavior: "smooth",
+    });
+  }, [activeId]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, duration: 0.5 }}
+    <Box
+      ref={ref}
+      sx={{
+        position: "sticky",
+        top: tokens.headerHeight,
+        zIndex: 10,
+        mx: { xs: -2, sm: -3 },
+        background: "rgba(0,0,0,0.82)",
+        backdropFilter: "saturate(160%) blur(14px)",
+        WebkitBackdropFilter: "saturate(160%) blur(14px)",
+        borderBottom: `1px solid ${tokens.border}`,
+      }}
     >
       <Box
+        ref={scrollerRef}
+        role="tablist"
+        aria-label="Menu categories"
+        className="no-scrollbar"
         sx={{
-          borderBottom: 1,
-          borderColor: "rgba(0,206,209,0.2)",
-          position: "sticky",
-          top: { xs: 64, md: 72 },
-          backgroundColor: "rgba(10, 25, 41, 0.95)",
-          backdropFilter: "blur(10px)",
-          zIndex: 100,
-          py: 2,
+          display: "flex",
+          gap: 1,
+          overflowX: "auto",
+          px: { xs: 2, sm: 3 },
+          py: 1.25,
+          // fade the edges so it's obvious the row scrolls
+          maskImage: "linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%)",
         }}
       >
-        <Tabs
-          value={selectedCategory}
-          onChange={handleChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-          sx={{
-            "& .MuiTabs-indicator": {
-              backgroundColor: "#00CED1",
-              height: 3,
-            },
-            "& .MuiTab-root": {
-              fontFamily: "Orbitron",
-              fontWeight: 600,
-              fontSize: { xs: "0.9rem", md: "1rem" },
-              color: "#B2BAC2",
-              textTransform: "none",
-              minHeight: 48,
-              transition: "all 0.3s ease",
-              "&:hover": {
-                color: "#00CED1",
-                background: "rgba(0,206,209,0.05)",
-              },
-              "&.Mui-selected": {
-                color: "#00CED1",
-              },
-            },
-          }}
-        >
-          {/* All Items Tab */}
-          <Tab
-            value="all"
-            label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                All Items
-                <Chip
-                  label={totalProducts}
-                  size="small"
-                  sx={{
-                    backgroundColor:
-                      selectedCategory === "all"
-                        ? "#00CED1"
-                        : "rgba(0,206,209,0.2)",
-                    color: selectedCategory === "all" ? "#0A1929" : "#00CED1",
-                    fontWeight: 700,
-                    height: 22,
-                    fontSize: "0.75rem",
-                  }}
+        {categories.map((c) => {
+          const active = c.id === activeId;
+          return (
+            <Box
+              key={c.id}
+              component="button"
+              role="tab"
+              aria-selected={active}
+              data-chip={c.id}
+              onClick={() => onSelect(c.id)}
+              sx={{
+                position: "relative",
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.75,
+                height: 38,
+                px: 2,
+                borderRadius: 999,
+                border: `1px solid ${active ? "transparent" : tokens.border}`,
+                background: "transparent",
+                color: active ? "#000" : tokens.textMuted,
+                font: "inherit",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                transition: "color .25s ease, border-color .25s ease",
+                "&:hover": { color: active ? "#000" : tokens.text, borderColor: active ? "transparent" : tokens.borderStrong },
+              }}
+            >
+              {active && (
+                <motion.span
+                  layoutId="menu-chip"
+                  transition={{ type: "spring", stiffness: 450, damping: 36 }}
+                  style={{ position: "absolute", inset: 0, borderRadius: 999, background: tokens.text }}
                 />
+              )}
+              <span style={{ position: "relative" }}>{c.name}</span>
+              <Box
+                component="span"
+                sx={{ position: "relative", fontSize: "0.75rem", opacity: active ? 0.6 : 0.55, fontWeight: 500 }}
+              >
+                {c.count}
               </Box>
-            }
-          />
-
-          {/* Category Tabs */}
-          {categories.map((categoryId) => {
-            const group = groupedProducts[categoryId];
-            return (
-              <Tab
-                key={categoryId}
-                value={categoryId}
-                label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {group.category.name}
-                    <Chip
-                      label={group.products.length}
-                      size="small"
-                      sx={{
-                        backgroundColor:
-                          selectedCategory === categoryId
-                            ? "#00CED1"
-                            : "rgba(0,206,209,0.2)",
-                        color:
-                          selectedCategory === categoryId
-                            ? "#0A1929"
-                            : "#00CED1",
-                        fontWeight: 700,
-                        height: 22,
-                        fontSize: "0.75rem",
-                      }}
-                    />
-                  </Box>
-                }
-              />
-            );
-          })}
-        </Tabs>
+            </Box>
+          );
+        })}
       </Box>
-    </motion.div>
+    </Box>
   );
-};
+});
+
+CategoryTabs.displayName = "CategoryTabs";
 
 export default CategoryTabs;

@@ -1,106 +1,143 @@
-import { createTheme } from "@mui/material/styles";
+import { createTheme, alpha } from "@mui/material/styles";
 
-// Epic Lounge Brand Colors
-const colors = {
-  primary: {
-    main: "#00CED1", // Turquoise (from logo)
-    light: "#5FE3E6",
-    dark: "#008B8D",
-  },
-  secondary: {
-    main: "#9B51E0", // Purple (from logo)
-    light: "#BA7FED",
-    dark: "#7829C8",
-  },
-  background: {
-    default: "#0A1929", // Dark blue-grey
-    paper: "#132F4C",
-  },
-  text: {
-    primary: "#FFFFFF",
-    secondary: "#B2BAC2",
-  },
-  gaming: {
-    neon: "#00FF88",
-    accent: "#FF00FF",
-  },
-};
+/**
+ * Epic Lounge design tokens.
+ * Pure black base, with the logo's turquoise + purple used as accents only.
+ */
+export const tokens = {
+  bg: "#000000",
+  surface: "#0B0B0E",
+  surfaceRaised: "#121217",
+  surfaceHover: "#17171D",
+  border: "rgba(255,255,255,0.08)",
+  borderStrong: "rgba(255,255,255,0.16)",
+  text: "#F5F5F7",
+  textMuted: "#9A9AA6",
+  textDim: "#62626E",
+  cyan: "#00CED1",
+  cyanBright: "#3DF2F5",
+  purple: "#9B51E0",
+  purpleBright: "#B57CFF",
+  green: "#2EE59D",
+  red: "#FF4D6D",
+  amber: "#FFB347",
+  whatsapp: "#25D366",
+  fontDisplay: '"Orbitron", "Space Grotesk", system-ui, sans-serif',
+  fontBody: '"Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif',
+  headerHeight: { xs: 60, md: 72 },
+  gradient: "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
+} as const;
 
 export const theme = createTheme({
   palette: {
     mode: "dark",
-    primary: colors.primary,
-    secondary: colors.secondary,
-    background: colors.background,
-    text: colors.text,
+    primary: { main: tokens.cyan, light: tokens.cyanBright, dark: "#009DA0", contrastText: "#000" },
+    secondary: { main: tokens.purple, light: tokens.purpleBright, dark: "#7829C8" },
+    success: { main: tokens.green },
+    error: { main: tokens.red },
+    warning: { main: tokens.amber },
+    background: { default: tokens.bg, paper: tokens.surface },
+    text: { primary: tokens.text, secondary: tokens.textMuted },
+    divider: tokens.border,
   },
   typography: {
-    fontFamily: '"Orbitron", "Rajdhani", "Roboto", sans-serif',
-    h1: {
-      fontWeight: 800,
-      fontSize: "4rem",
-      letterSpacing: "0.02em",
-      textTransform: "uppercase",
-      background: `linear-gradient(135deg, ${colors.primary.main} 0%, ${colors.secondary.main} 100%)`,
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-    },
-    h2: {
-      fontWeight: 700,
-      fontSize: "3rem",
-      letterSpacing: "0.01em",
-      textTransform: "uppercase",
-    },
-    h3: {
-      fontWeight: 700,
-      fontSize: "2rem",
-      letterSpacing: "0.01em",
-    },
-    h4: {
-      fontWeight: 600,
-      fontSize: "1.5rem",
-    },
-    button: {
-      fontWeight: 700,
-      letterSpacing: "0.05em",
-      textTransform: "uppercase",
-    },
+    fontFamily: tokens.fontBody,
+    h1: { fontFamily: tokens.fontDisplay, fontWeight: 800, letterSpacing: "0.01em", lineHeight: 1.05 },
+    h2: { fontFamily: tokens.fontDisplay, fontWeight: 800, letterSpacing: "0.01em", lineHeight: 1.1 },
+    h3: { fontFamily: tokens.fontDisplay, fontWeight: 700, lineHeight: 1.15 },
+    h4: { fontFamily: tokens.fontBody, fontWeight: 700, lineHeight: 1.2 },
+    h5: { fontFamily: tokens.fontBody, fontWeight: 700 },
+    h6: { fontFamily: tokens.fontBody, fontWeight: 600 },
+    body1: { lineHeight: 1.65 },
+    body2: { lineHeight: 1.6 },
+    overline: { fontFamily: tokens.fontBody, fontWeight: 600, letterSpacing: "0.18em", lineHeight: 1.6 },
+    button: { fontFamily: tokens.fontBody, fontWeight: 600, letterSpacing: "0.02em", textTransform: "none" },
   },
-  shape: {
-    borderRadius: 12,
-  },
+  // Keep MUI's 4px base so numeric sx radii stay predictable (borderRadius: 4 → 16px)
+  shape: { borderRadius: 4 },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: { backgroundColor: tokens.bg },
+      },
+    },
     MuiButton: {
+      defaultProps: { disableElevation: true },
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          padding: "12px 32px",
-          fontSize: "1rem",
-          boxShadow: "0 4px 20px rgba(0, 206, 209, 0.3)",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-2px)",
-            boxShadow: "0 8px 30px rgba(0, 206, 209, 0.5)",
-          },
+          borderRadius: 999,
+          padding: "12px 26px",
+          fontSize: "0.98rem",
+          transition: "background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease",
         },
-        contained: {
-          background: `linear-gradient(135deg, ${colors.primary.main} 0%, ${colors.secondary.main} 100%)`,
+        sizeLarge: { padding: "15px 32px", fontSize: "1.05rem" },
+        sizeSmall: { padding: "7px 16px", fontSize: "0.85rem" },
+        containedPrimary: {
+          background: tokens.cyan,
+          color: "#000",
+          "&:hover": { background: tokens.cyanBright, boxShadow: `0 0 0 6px ${alpha(tokens.cyan, 0.14)}` },
         },
+        outlined: {
+          borderColor: tokens.borderStrong,
+          color: tokens.text,
+          "&:hover": { borderColor: tokens.text, background: "rgba(255,255,255,0.04)" },
+        },
+        text: { color: tokens.text, "&:hover": { background: "rgba(255,255,255,0.05)" } },
       },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: { transition: "background-color .2s ease, color .2s ease, transform .2s ease" },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: { root: { backgroundImage: "none" } },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          background: "rgba(19, 47, 76, 0.8)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(0, 206, 209, 0.2)",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            border: "1px solid rgba(0, 206, 209, 0.5)",
-            transform: "translateY(-4px)",
-            boxShadow: "0 8px 30px rgba(155, 81, 224, 0.3)",
-          },
+          background: tokens.surface,
+          border: `1px solid ${tokens.border}`,
+          borderRadius: 16,
+          boxShadow: "none",
         },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: { fontWeight: 600, borderRadius: 999 },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          background: tokens.surfaceRaised,
+          border: `1px solid ${tokens.border}`,
+          fontSize: "0.8rem",
+          fontFamily: tokens.fontBody,
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          background: tokens.surface,
+          borderRadius: 14,
+          "& .MuiOutlinedInput-notchedOutline": { borderColor: tokens.border },
+          "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: tokens.borderStrong },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: tokens.cyan, borderWidth: 1 },
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: { background: tokens.bg, borderColor: tokens.border },
+      },
+    },
+    MuiBackdrop: {
+      styleOverrides: {
+        root: { backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" },
+        invisible: { backgroundColor: "transparent", backdropFilter: "none" },
       },
     },
   },

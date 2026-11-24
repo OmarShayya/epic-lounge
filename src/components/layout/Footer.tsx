@@ -1,355 +1,101 @@
 import React from "react";
-import {
-  Box,
-  Container,
-  Grid,
-  Typography,
-  Stack,
-  IconButton,
-  Link,
-} from "@mui/material";
-import {
-  Facebook,
-  Instagram,
-  Twitter,
-  Phone,
-  Email,
-  LocationOn,
-} from "@mui/icons-material";
-import { CONTACT_INFO, SOCIAL_LINKS } from "@utils/constants";
+import { Box, Container, Grid, Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
+import { tokens } from "@theme/theme";
+import { CONTACT_INFO, OPENING_HOURS } from "@utils/constants";
 
-const Footer: React.FC = () => {
-  return (
-    <Box
-      component="footer"
-      sx={{
-        background: "linear-gradient(180deg, #0A1929 0%, #000000 100%)",
-        borderTop: "1px solid rgba(0,206,209,0.2)",
-        py: 6,
-        mt: "auto",
-      }}
-    >
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
-          {/* Brand & Description */}
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Stack spacing={2}>
-              {/* Epic Lounge Text Logo */}
-              <Typography
-                sx={{
-                  fontSize: "2rem",
-                  fontWeight: 900,
-                  fontFamily: "Orbitron",
-                  textTransform: "uppercase",
-                  background:
-                    "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  letterSpacing: "0.05em",
-                  mb: 1,
-                }}
-              >
-                EPIC LOUNGE
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#B2BAC2",
-                  lineHeight: 1.7,
-                }}
-              >
-                Lebanon's premier gaming destination. Experience the ultimate in
-                competitive gaming, casual play, and community events.
-              </Typography>
-              <Stack direction="row" spacing={1}>
-                <IconButton
-                  component="a"
-                  href={SOCIAL_LINKS.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: "#00CED1",
-                    "&:hover": {
-                      color: "#9B51E0",
-                      transform: "translateY(-3px)",
-                    },
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <Facebook />
-                </IconButton>
-                <IconButton
-                  component="a"
-                  href={SOCIAL_LINKS.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: "#00CED1",
-                    "&:hover": {
-                      color: "#9B51E0",
-                      transform: "translateY(-3px)",
-                    },
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <Instagram />
-                </IconButton>
-                <IconButton
-                  component="a"
-                  href={SOCIAL_LINKS.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: "#00CED1",
-                    "&:hover": {
-                      color: "#9B51E0",
-                      transform: "translateY(-3px)",
-                    },
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <Twitter />
-                </IconButton>
-              </Stack>
-            </Stack>
-          </Grid>
+const linkSx = {
+  color: tokens.textMuted,
+  textDecoration: "none",
+  fontSize: "0.95rem",
+  transition: "color .2s ease",
+  "&:hover": { color: tokens.text },
+} as const;
 
-          {/* Quick Links */}
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontFamily: "Orbitron",
-                fontWeight: 700,
-                color: "#00CED1",
-                mb: 2,
-              }}
-            >
-              Quick Links
+const Footer: React.FC = () => (
+  <Box component="footer" sx={{ borderTop: `1px solid ${tokens.border}`, mt: "auto", position: "relative", overflow: "hidden" }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
+      <Grid container spacing={{ xs: 4, md: 6 }}>
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+            <Box component="img" src="/logo-96.webp" alt="" width={40} height={40} sx={{ borderRadius: "10px" }} />
+            <Typography sx={{ fontFamily: tokens.fontDisplay, fontWeight: 800, letterSpacing: "0.08em" }}>
+              EPIC<Box component="span" sx={{ color: tokens.cyan }}>.</Box>LOUNGE
             </Typography>
-            <Stack spacing={1}>
-              <Link
-                href="/"
-                sx={{
-                  color: "#B2BAC2",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#00CED1",
-                  },
-                  transition: "color 0.3s ease",
-                }}
-              >
-                Home
-              </Link>
-              <Link
-                href="/menu"
-                sx={{
-                  color: "#B2BAC2",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#00CED1",
-                  },
-                  transition: "color 0.3s ease",
-                }}
-              >
-                Menu
-              </Link>
-              <Link
-                href="/gaming"
-                sx={{
-                  color: "#B2BAC2",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#00CED1",
-                  },
-                  transition: "color 0.3s ease",
-                }}
-              >
-                Gaming Status
-              </Link>
-              <Link
-                href="/#features"
-                sx={{
-                  color: "#B2BAC2",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#00CED1",
-                  },
-                  transition: "color 0.3s ease",
-                }}
-              >
-                Features
-              </Link>
-              <Link
-                href="/#about"
-                sx={{
-                  color: "#B2BAC2",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#00CED1",
-                  },
-                  transition: "color 0.3s ease",
-                }}
-              >
-                About Us
-              </Link>
-            </Stack>
-          </Grid>
-
-          {/* Contact Info */}
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontFamily: "Orbitron",
-                fontWeight: 700,
-                color: "#00CED1",
-                mb: 2,
-              }}
-            >
-              Contact Us
-            </Typography>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <LocationOn sx={{ color: "#9B51E0", fontSize: 20 }} />
-                <Typography variant="body2" sx={{ color: "#B2BAC2" }}>
-                  {CONTACT_INFO.address}
-                </Typography>
-              </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Phone sx={{ color: "#9B51E0", fontSize: 20 }} />
-                <Typography
-                  component="a"
-                  href={`tel:${CONTACT_INFO.phone}`}
-                  variant="body2"
-                  sx={{
-                    color: "#B2BAC2",
-                    textDecoration: "none",
-                    "&:hover": {
-                      color: "#00CED1",
-                    },
-                  }}
-                >
-                  {CONTACT_INFO.phone}
-                </Typography>
-              </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Email sx={{ color: "#9B51E0", fontSize: 20 }} />
-                <Typography
-                  component="a"
-                  href={`mailto:${CONTACT_INFO.email}`}
-                  variant="body2"
-                  sx={{
-                    color: "#B2BAC2",
-                    textDecoration: "none",
-                    "&:hover": {
-                      color: "#00CED1",
-                    },
-                  }}
-                >
-                  {CONTACT_INFO.email}
-                </Typography>
-              </Stack>
-            </Stack>
-          </Grid>
+          </Stack>
+          <Typography sx={{ color: tokens.textMuted, maxWidth: 360 }}>
+            Lebanon's gaming destination — high-end PCs, private PS5 rooms, billiards, live football and good coffee.
+          </Typography>
         </Grid>
 
-        {/* Copyright */}
-        <Box
-          sx={{
-            mt: 6,
-            pt: 3,
-            borderTop: "1px solid rgba(0,206,209,0.2)",
-          }}
-        >
-          <Stack spacing={1.5} alignItems="center">
-            {/* Main Copyright */}
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#B2BAC2",
-                textAlign: "center",
-              }}
-            >
-              © {new Date().getFullYear()} Epic Lounge. All rights reserved. |
-              Gamer's Heaven
-            </Typography>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <Typography variant="overline" sx={{ color: tokens.textDim }}>
+            Explore
+          </Typography>
+          <Stack spacing={1.25} sx={{ mt: 1 }}>
+            <Box component={RouterLink} to="/" sx={linkSx}>Home</Box>
+            <Box component={RouterLink} to="/menu" sx={linkSx}>Menu</Box>
+            <Box component={RouterLink} to="/gaming" sx={linkSx}>Live PC status</Box>
+            <Box component="a" href="/#features" sx={linkSx}>What's inside</Box>
+          </Stack>
+        </Grid>
 
-            {/* Developer Credit - Subtle & Cool */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                opacity: 0.6,
-                transition: "opacity 0.3s ease",
-                "&:hover": {
-                  opacity: 1,
-                  "& .dev-text": {
-                    background:
-                      "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  },
-                },
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "rgba(178,186,194,0.6)",
-                  fontSize: "0.75rem",
-                  fontFamily: "monospace",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Developed
+        <Grid size={{ xs: 6, md: 4 }}>
+          <Typography variant="overline" sx={{ color: tokens.textDim }}>
+            Visit
+          </Typography>
+          <Stack spacing={1.25} sx={{ mt: 1 }}>
+            <Typography sx={{ color: tokens.textMuted, fontSize: "0.95rem" }}>{CONTACT_INFO.address}</Typography>
+            {OPENING_HOURS.map((h) => (
+              <Typography key={h.day} sx={{ color: tokens.textMuted, fontSize: "0.95rem" }}>
+                {h.day} · {h.hours}
               </Typography>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "rgba(178,186,194,0.6)",
-                  fontSize: "0.75rem",
-                  fontFamily: "monospace",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                by
-              </Typography>
-              <Typography
-                className="dev-text"
-                variant="caption"
-                sx={{
-                  color: "#00CED1",
-                  fontSize: "0.75rem",
-                  fontFamily: "Orbitron",
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                Omar Shayya & Nael Shayya
-              </Typography>
-              <Box
-                sx={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: "50%",
-                  background: "#00CED1",
-                  animation: "blink 1.5s ease-in-out infinite",
-                  "@keyframes blink": {
-                    "0%, 100%": { opacity: 1 },
-                    "50%": { opacity: 0.3 },
-                  },
-                }}
-              />
+            ))}
+            <Box component="a" href={`tel:${CONTACT_INFO.phone}`} sx={linkSx}>
+              {CONTACT_INFO.phone}
             </Box>
           </Stack>
-        </Box>
-      </Container>
-    </Box>
-  );
-};
+        </Grid>
+      </Grid>
+
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        spacing={1}
+        sx={{ mt: { xs: 5, md: 7 }, pt: 3, borderTop: `1px solid ${tokens.border}` }}
+      >
+        <Typography sx={{ color: tokens.textDim, fontSize: "0.85rem" }}>
+          © {new Date().getFullYear()} Epic Lounge · Gamer's Heaven
+        </Typography>
+        <Typography sx={{ color: tokens.textDim, fontSize: "0.85rem" }}>
+          Developed by{" "}
+          <Box component="span" sx={{ color: tokens.textMuted, fontWeight: 600 }}>
+            Omar Shayya & Nael Shayya
+          </Box>
+        </Typography>
+      </Stack>
+    </Container>
+
+    {/* Oversized wordmark */}
+    <Typography
+      aria-hidden
+      sx={{
+        fontFamily: tokens.fontDisplay,
+        fontWeight: 900,
+        fontSize: { xs: "18vw", md: "12.5vw" },
+        lineHeight: 0.8,
+        textAlign: "center",
+        whiteSpace: "nowrap",
+        color: "transparent",
+        WebkitTextStroke: "1px rgba(255,255,255,0.07)",
+        userSelect: "none",
+        mb: { xs: -1, md: -2 },
+      }}
+    >
+      EPIC LOUNGE
+    </Typography>
+  </Box>
+);
 
 export default Footer;

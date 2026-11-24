@@ -1,103 +1,45 @@
 import React from "react";
-import { Box, Typography, Stack } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { motion } from "framer-motion";
-import { Restaurant } from "@mui/icons-material";
+import { tokens } from "@theme/theme";
+import SearchBar from "./SearchBar";
 
-const MenuHeader: React.FC = () => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
+interface MenuHeaderProps {
+  query: string;
+  onQueryChange: (q: string) => void;
+}
+
+const MenuHeader: React.FC<MenuHeaderProps> = ({ query, onQueryChange }) => (
+  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <Stack
+      direction={{ xs: "column", md: "row" }}
+      alignItems={{ xs: "stretch", md: "flex-end" }}
+      justifyContent="space-between"
+      spacing={{ xs: 2, md: 4 }}
+      sx={{ mb: { xs: 1.5, md: 3 } }}
     >
-      <Box sx={{ textAlign: "center", py: { xs: 4, md: 6 } }}>
-        <Stack spacing={2} alignItems="center">
-          {/* Icon */}
-          <Box
-            sx={{
-              position: "relative",
-              width: 80,
-              height: 80,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Box
-              component={motion.div}
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.5, 0.8, 0.5],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              sx={{
-                position: "absolute",
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(0,206,209,0.3) 0%, transparent 70%)",
-                filter: "blur(15px)",
-              }}
-            />
-            <Restaurant
-              sx={{
-                fontSize: 50,
-                color: "#00CED1",
-                filter: "drop-shadow(0 0 15px rgba(0,206,209,0.6))",
-                position: "relative",
-                zIndex: 1,
-              }}
-            />
-          </Box>
-
-          {/* Title */}
-          <Typography
-            variant="h2"
-            sx={{
-              fontFamily: "Orbitron",
-              fontWeight: 800,
-              fontSize: { xs: "2.5rem", md: "3.5rem" },
-              background: "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Our Menu
-          </Typography>
-
-          {/* Subtitle */}
-          <Typography
-            variant="h6"
-            sx={{
-              color: "#B2BAC2",
-              maxWidth: "600px",
-              fontSize: { xs: "1rem", md: "1.2rem" },
-            }}
-          >
-            Fuel your gaming session with our selection of snacks and beverages
-          </Typography>
-
-          {/* Decorative Line */}
-          <Box
-            sx={{
-              width: { xs: 100, md: 150 },
-              height: 3,
-              background:
-                "linear-gradient(90deg, transparent, #00CED1, transparent)",
-              mt: 2,
-            }}
-          />
-        </Stack>
+      <Box>
+        <Typography
+          component="h1"
+          sx={{
+            fontFamily: tokens.fontDisplay,
+            fontWeight: 800,
+            fontSize: { xs: "2rem", md: "2.8rem" },
+            lineHeight: 1,
+            textTransform: "uppercase",
+          }}
+        >
+          Menu
+        </Typography>
+        <Typography sx={{ color: tokens.textMuted, mt: 1, fontSize: { xs: "0.95rem", md: "1.05rem" } }}>
+          Drinks, snacks & gaming fuel. Tap <b style={{ color: tokens.text }}>+</b> to add, then send your order on WhatsApp.
+        </Typography>
       </Box>
-    </motion.div>
-  );
-};
+      <Box sx={{ width: { xs: "100%", md: 360 }, flexShrink: 0 }}>
+        <SearchBar value={query} onChange={onQueryChange} />
+      </Box>
+    </Stack>
+  </motion.div>
+);
 
 export default MenuHeader;

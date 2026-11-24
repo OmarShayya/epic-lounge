@@ -1,558 +1,836 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Box, Typography, useTheme, alpha, useMediaQuery } from "@mui/material";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Box, Typography, alpha } from "@mui/material";
+import { AnimatePresence, motion } from "framer-motion";
+import { ThreeSixty, TouchApp } from "@mui/icons-material";
 import { PC_LAYOUT } from "@/config/pcLayout";
-import { PCStatus } from "@/services/api";
+import type { PCStatus } from "@/services/api";
+import { tokens } from "@theme/theme";
+import { STATUS_META, normalizePcNumber, shortPcLabel, statusColor } from "./statusMeta";
+
+/* ------------------------------------------------------------------ */
+/* Scene constants (logical px, the whole scene is scaled to fit)      */
+/* ------------------------------------------------------------------ */
+
+const FLOOR_W = 900;
+const FLOOR_H = 500;
+const SLAB = 18; // floor thickness
+const TILT = 56; // rotateX of the floor
+const BASE_ROT = -24; // resting rotateZ
+const MAX_ORBIT = 50; // how far the user can drag around
+
+const DESK = { w: 84, d: 52, h: 20 };
+const MONITOR = { w: 62, d: 5, h: 36, y: 8, lift: 6 };
+const CHAIR = { w: 30, d: 24, h: 14, gap: 8 };
+
+/* ------------------------------------------------------------------ */
+/* A box built from five faces (no bottom), in its parent's 3D space.   */
+/* ------------------------------------------------------------------ */
+
+interface CuboidProps {
+  x: number;
+  y: number;
+  z?: number;
+  w: number;
+  d: number;
+  h: number;
+  top: string;
+  front: string;
+  side: string;
+  back?: string;
+  topStyle?: React.CSSProperties;
+  frontStyle?: React.CSSProperties;
+  children?: React.ReactNode;
+}
+
+const face: React.CSSProperties = { position: "absolute", backfaceVisibility: "visible" };
+
+const Cuboid: React.FC<CuboidProps> = ({
+  x,
+  y,
+  z = 0,
+  w,
+  d,
+  h,
+  top,
+  front,
+  side,
+  back = side,
+  topStyle,
+  frontStyle,
+  children,
+}) => (
+  <div
+    style={{
+      position: "absolute",
+      left: x,
+      top: y,
+      width: w,
+      height: d,
+      transformStyle: "preserve-3d",
+      transform: `translateZ(${z}px)`,
+    }}
+  >
+    {/* back */}
+    <div
+      style={{ ...face, left: 0, top: 0, width: w, height: h, background: back, transformOrigin: "top", transform: "rotateX(90deg)" }}
+    />
+    {/* left */}
+    <div
+      style={{ ...face, left: 0, top: 0, width: h, height: d, background: side, transformOrigin: "left", transform: "rotateY(-90deg)" }}
+    />
+    {/* right */}
+    <div
+      style={{ ...face, left: w - h, top: 0, width: h, height: d, background: side, transformOrigin: "right", transform: "rotateY(90deg)" }}
+    />
+    {/* front */}
+    <div
+      style={{
+        ...face,
+        left: 0,
+        top: d - h,
+        width: w,
+        height: h,
+        background: front,
+        transformOrigin: "bottom",
+        transform: "rotateX(-90deg)",
+        ...frontStyle,
+      }}
+    />
+    {/* top */}
+    <div style={{ ...face, left: 0, top: 0, width: w, height: d, background: top, transform: `translateZ(${h}px)`, ...topStyle }}>
+      {children}
+    </div>
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/* One gaming station: desk + monitor + chair + glow + floating label   */
+/* ------------------------------------------------------------------ */
+
+interface StationProps {
+  pc: PCStatus;
+  x: number;
+  y: number;
+  rotation: number;
+  active: boolean;
+  labelScale: number;
+  onSelect: (pcNumber: string) => void;
+  onHover: (pcNumber: string | null) => void;
+  wasDragging: () => boolean;
+}
+
+const Station: React.FC<StationProps> = React.memo(
+  ({ pc, x, y, rotation, active, labelScale, onSelect, onHover, wasDragging }) => {
+    const color = statusColor(pc.status);
+    const occupied = pc.status === "occupied";
+    const pulse = occupied ? "pcPulse 1.8s ease-in-out infinite" : undefined;
+    const labelZ = DESK.h + MONITOR.lift + MONITOR.h + 24;
+
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${pc.name}: ${STATUS_META[pc.status]?.label ?? pc.status}`}
+        onPointerEnter={(e) => e.pointerType === "mouse" && onHover(pc.pcNumber)}
+        onPointerLeave={(e) => e.pointerType === "mouse" && onHover(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!wasDragging()) onSelect(pc.pcNumber);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(pc.pcNumber);
+          }
+        }}
+        style={{
+          position: "absolute",
+          left: `${x}%`,
+          top: `${y}%`,
+          width: 0,
+          height: 0,
+          transformStyle: "preserve-3d",
+          outline: "none",
+          pointerEvents: "auto",
+          cursor: "pointer",
+        }}
+      >
+        {/* Desk group (can be rotated per layout) */}
+        <div
+          style={{
+            position: "absolute",
+            left: -DESK.w / 2,
+            top: -DESK.d / 2,
+            width: DESK.w,
+            height: DESK.d + CHAIR.gap + CHAIR.d,
+            transformStyle: "preserve-3d",
+            transform: `rotateZ(${rotation}deg) translateZ(${active ? 10 : 0}px)`,
+            transition: "transform .4s cubic-bezier(.22,1,.36,1)",
+          }}
+        >
+          {/* Status glow pooled on the floor */}
+          <div
+            style={{
+              position: "absolute",
+              left: -26,
+              top: -22,
+              width: DESK.w + 52,
+              height: DESK.d + 44,
+              borderRadius: "50%",
+              background: `radial-gradient(closest-side, ${alpha(color, active ? 0.75 : 0.5)}, transparent)`,
+              transform: "translateZ(1px)",
+              animation: pulse,
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Desk */}
+          <Cuboid
+            x={0}
+            y={0}
+            w={DESK.w}
+            d={DESK.d}
+            h={DESK.h}
+            top="#18181f"
+            front="#0e0e13"
+            side="#0a0a0e"
+            topStyle={{
+              borderRadius: 3,
+              boxShadow: active
+                ? `inset 0 0 0 2px #fff, 0 0 26px ${alpha(color, 0.8)}`
+                : `inset 0 0 0 1px ${alpha(color, 0.45)}`,
+            }}
+            frontStyle={{ boxShadow: `inset 0 -3px 0 ${color}` }}
+          >
+            {/* keyboard + mouse */}
+            <div
+              style={{
+                position: "absolute",
+                left: DESK.w / 2 - 20,
+                bottom: 8,
+                width: 34,
+                height: 9,
+                borderRadius: 2,
+                background: "rgba(255,255,255,0.09)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: DESK.w / 2 + 18,
+                bottom: 9,
+                width: 6,
+                height: 8,
+                borderRadius: 3,
+                background: "rgba(255,255,255,0.12)",
+              }}
+            />
+          </Cuboid>
+
+          {/* Monitor stand + monitor */}
+          <Cuboid
+            x={DESK.w / 2 - 4}
+            y={MONITOR.y}
+            z={DESK.h}
+            w={8}
+            d={6}
+            h={MONITOR.lift}
+            top="#222"
+            front="#1a1a1f"
+            side="#141418"
+          />
+          <Cuboid
+            x={(DESK.w - MONITOR.w) / 2}
+            y={MONITOR.y}
+            z={DESK.h + MONITOR.lift}
+            w={MONITOR.w}
+            d={MONITOR.d}
+            h={MONITOR.h}
+            top="#1c1c22"
+            side="#121217"
+            back="#121217"
+            front={`linear-gradient(180deg, ${alpha(color, 0.95)} 0%, ${alpha(color, 0.55)} 100%)`}
+            frontStyle={{
+              border: "2px solid #08080b",
+              borderRadius: 3,
+              boxShadow: `0 0 ${active ? 34 : 22}px ${alpha(color, 0.75)}`,
+              animation: pulse,
+            }}
+          />
+
+          {/* Chair */}
+          <Cuboid
+            x={(DESK.w - CHAIR.w) / 2}
+            y={DESK.d + CHAIR.gap}
+            w={CHAIR.w}
+            d={CHAIR.d}
+            h={CHAIR.h}
+            top="#1d1d25"
+            front="#121218"
+            side="#0e0e13"
+            topStyle={{ borderRadius: 6 }}
+          />
+          <Cuboid
+            x={(DESK.w - CHAIR.w) / 2}
+            y={DESK.d + CHAIR.gap + CHAIR.d - 5}
+            z={CHAIR.h}
+            w={CHAIR.w}
+            d={5}
+            h={22}
+            top="#23232c"
+            front="#16161d"
+            side="#101015"
+            back={alpha(color, 0.35)}
+          />
+        </div>
+
+        {/* Floating label that always faces the camera */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transformStyle: "preserve-3d",
+            transform: `translateZ(${labelZ + (active ? 10 : 0)}px) rotateZ(calc(var(--rot) * -1)) rotateX(calc(var(--tilt) * -1))`,
+            transition: "transform .4s cubic-bezier(.22,1,.36,1)",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              transform: `translate(-50%, -100%) scale(${labelScale})`,
+              transformOrigin: "50% 100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 8px",
+              borderRadius: 999,
+              background: active ? "#fff" : "rgba(8,8,11,0.88)",
+              border: `1px solid ${active ? "#fff" : alpha(color, 0.6)}`,
+              color: active ? "#000" : "#fff",
+              fontFamily: tokens.fontDisplay,
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              whiteSpace: "nowrap",
+              boxShadow: `0 4px 18px rgba(0,0,0,0.6)`,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: color,
+                boxShadow: `0 0 8px ${color}`,
+              }}
+            />
+            {shortPcLabel(pc.pcNumber)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+Station.displayName = "Station";
+
+/* ------------------------------------------------------------------ */
+/* Floor map                                                           */
+/* ------------------------------------------------------------------ */
 
 interface PCGrid3DProps {
   pcs: PCStatus[];
+  selectedId: string | null;
+  onSelect: (pcNumber: string | null) => void;
 }
 
-const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hoveredPC, setHoveredPC] = useState<string | null>(null);
-  const [clickedPC, setClickedPC] = useState<PCStatus | null>(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
+const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const floorRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.8);
+  const [compact, setCompact] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const pcStatusMap = new Map<string, PCStatus>();
-  pcs.forEach((pc) => {
-    pcStatusMap.set(pc.pcNumber, pc);
-    if (!pc.pcNumber.toUpperCase().startsWith("PC")) {
-      pcStatusMap.set(`PC${pc.pcNumber}`, pc);
-    }
-    if (pc.pcNumber.toUpperCase().startsWith("PC")) {
-      pcStatusMap.set(pc.pcNumber.substring(2), pc);
-    }
-  });
+  // Orbit state lives in refs so dragging never re-renders React
+  const orbit = useRef(0); // user drag offset (deg)
+  const tiltOffset = useRef(0); // mouse parallax (deg)
+  const drag = useRef<{ x: number; start: number; moved: boolean } | null>(null);
+  const justDragged = useRef(false);
 
-  const getPCStatus = (pcNumber: string): PCStatus | undefined => {
-    let status = pcStatusMap.get(pcNumber);
-    if (status) return status;
+  /* Place PCs: configured layout first, then any unknown PCs in middle rows */
+  const placed = useMemo(() => {
+    const byKey = new Map(pcs.map((pc) => [normalizePcNumber(pc.pcNumber), pc]));
+    const used = new Set<string>();
+    const items: { pc: PCStatus; x: number; y: number; rotation: number }[] = [];
 
-    status = pcStatusMap.get(`PC${pcNumber}`);
-    if (status) return status;
-
-    if (pcNumber.toUpperCase().startsWith("PC")) {
-      status = pcStatusMap.get(pcNumber.substring(2));
-      if (status) return status;
-    }
-
-    return undefined;
-  };
-
-  const drawMonitor = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number,
-    color: string,
-    glowColor: string,
-    isHovered: boolean,
-    rotation: number
-  ) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((rotation * Math.PI) / 180);
-
-    const scale = isHovered ? 1.1 : 1;
-    ctx.scale(scale, scale);
-
-    const screenWidth = size * 1.2;
-    const screenHeight = size * 0.8;
-    const depth = size * 0.15;
-    const baseHeight = size * 0.2;
-
-    ctx.shadowBlur = isHovered ? 30 : 20;
-    ctx.shadowColor = glowColor;
-
-    ctx.fillStyle = alpha("#1a1a1a", 0.9);
-    ctx.beginPath();
-    ctx.ellipse(
-      0,
-      screenHeight / 2 + baseHeight,
-      size * 0.4,
-      size * 0.15,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-
-    ctx.fillStyle = alpha("#2a2a2a", 0.9);
-    ctx.fillRect(-size * 0.08, screenHeight / 2, size * 0.16, baseHeight);
-
-    ctx.fillStyle = alpha("#1a1a1a", 0.8);
-    ctx.beginPath();
-    ctx.moveTo(-screenWidth / 2 - depth, -screenHeight / 2);
-    ctx.lineTo(-screenWidth / 2, -screenHeight / 2 - depth);
-    ctx.lineTo(screenWidth / 2, -screenHeight / 2 - depth);
-    ctx.lineTo(screenWidth / 2 + depth, -screenHeight / 2);
-    ctx.lineTo(screenWidth / 2 + depth, screenHeight / 2);
-    ctx.lineTo(screenWidth / 2, screenHeight / 2 - depth);
-    ctx.lineTo(-screenWidth / 2, screenHeight / 2 - depth);
-    ctx.lineTo(-screenWidth / 2 - depth, screenHeight / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = alpha("#0a0a0a", 0.95);
-    ctx.beginPath();
-    const radius = size * 0.08;
-    ctx.roundRect(
-      -screenWidth / 2,
-      -screenHeight / 2,
-      screenWidth,
-      screenHeight,
-      radius
-    );
-    ctx.fill();
-
-    const gradient = ctx.createLinearGradient(
-      -screenWidth / 2,
-      -screenHeight / 2,
-      screenWidth / 2,
-      screenHeight / 2
-    );
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, alpha(color, 0.7));
-
-    ctx.fillStyle = gradient;
-    const screenPadding = size * 0.12;
-    ctx.beginPath();
-    ctx.roundRect(
-      -screenWidth / 2 + screenPadding,
-      -screenHeight / 2 + screenPadding,
-      screenWidth - screenPadding * 2,
-      screenHeight - screenPadding * 2,
-      radius * 0.5
-    );
-    ctx.fill();
-
-    const shine = ctx.createLinearGradient(
-      -screenWidth / 2,
-      -screenHeight / 2,
-      -screenWidth / 4,
-      -screenHeight / 4
-    );
-    shine.addColorStop(0, "rgba(255,255,255,0.3)");
-    shine.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = shine;
-    ctx.beginPath();
-    ctx.roundRect(
-      -screenWidth / 2 + screenPadding,
-      -screenHeight / 2 + screenPadding,
-      screenWidth * 0.3,
-      screenHeight * 0.3,
-      radius * 0.5
-    );
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  };
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const updateSize = () => {
-      const container = canvas.parentElement;
-      if (container) {
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
+    PC_LAYOUT.forEach((slot) => {
+      const key = normalizePcNumber(slot.pcNumber);
+      const pc = byKey.get(key);
+      if (pc && !used.has(key)) {
+        used.add(key);
+        items.push({ pc, x: slot.x, y: slot.y, rotation: slot.rotation });
       }
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
+    });
 
-    let animationId: number;
-    const animate = () => {
-      if (!ctx || !canvas) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.strokeStyle = alpha("#00CED1", 0.3);
-      ctx.lineWidth = isMobile ? 2 : 3;
-      ctx.beginPath();
-      ctx.roundRect(
-        canvas.width * 0.05,
-        canvas.height * 0.05,
-        canvas.width * 0.9,
-        canvas.height * 0.9,
-        20
-      );
-      ctx.stroke();
-
-      const size = isSmallMobile ? 30 : isMobile ? 40 : 60;
-
-      PC_LAYOUT.forEach((layout) => {
-        const pcStatus = getPCStatus(layout.pcNumber);
-        if (!pcStatus) return;
-
-        const x = (canvas.width * layout.x) / 100;
-        const y = (canvas.height * layout.y) / 100;
-
-        let color = "#00CED1";
-        let glowColor = "rgba(0,206,209,0.8)";
-
-        if (pcStatus.status === "occupied") {
-          color = "#FF4081";
-          glowColor = "rgba(255,64,129,0.8)";
-        } else if (pcStatus.status === "maintenance") {
-          color = "#FFA726";
-          glowColor = "rgba(255,167,38,0.8)";
-        }
-
-        const isHovered = hoveredPC === pcStatus.pcNumber;
-
-        drawMonitor(
-          ctx,
-          x,
-          y,
-          size,
-          color,
-          glowColor,
-          isHovered,
-          layout.rotation
-        );
-
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate((layout.rotation * Math.PI) / 180);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#0A1929";
-        ctx.font = `bold ${isMobile ? 10 : 14}px Orbitron`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(pcStatus.pcNumber, 0, 0);
-        ctx.restore();
-
-        if (pcStatus.status === "occupied") {
-          const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = isMobile ? 2 : 3;
-          ctx.globalAlpha = pulse;
-          ctx.beginPath();
-          ctx.arc(x, y, size * 0.8, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.globalAlpha = 1;
-        }
+    const extras = pcs.filter((pc) => !used.has(normalizePcNumber(pc.pcNumber)));
+    const perRow = 6;
+    extras.forEach((pc, i) => {
+      const row = Math.floor(i / perRow);
+      const inRow = Math.min(perRow, extras.length - row * perRow);
+      items.push({
+        pc,
+        x: (((i % perRow) + 1) / (inRow + 1)) * 100,
+        y: 38 + row * 18,
+        rotation: 0,
       });
+    });
+    return items;
+  }, [pcs]);
 
-      animationId = requestAnimationFrame(animate);
+  /* Fit the scene to the container */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setScale(Math.max(0.28, Math.min(1.05, width / 1060, height / 700)));
+      setCompact(width < 600);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /* Animation loop: eases rotation towards target, adds a gentle idle sway */
+  useEffect(() => {
+    const floor = floorRef.current;
+    const container = containerRef.current;
+    if (!floor || !container) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let raf = 0;
+    let visible = true;
+    let last = performance.now();
+    let swayTime = 0;
+    let rot = BASE_ROT;
+    let tilt = TILT;
+
+    const tick = (now: number) => {
+      const dt = Math.min(64, now - last);
+      last = now;
+      if (!drag.current && !reduceMotion) swayTime += dt;
+      const sway = reduceMotion ? 0 : Math.sin(swayTime / 2800) * 6;
+      const targetRot = BASE_ROT + orbit.current + sway;
+      const targetTilt = TILT + tiltOffset.current;
+      rot += (targetRot - rot) * 0.12;
+      tilt += (targetTilt - tilt) * 0.1;
+      floor.style.setProperty("--rot", `${rot.toFixed(3)}deg`);
+      floor.style.setProperty("--tilt", `${tilt.toFixed(3)}deg`);
+      raf = visible ? requestAnimationFrame(tick) : 0;
     };
 
-    animate();
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      let foundPC: string | null = null;
-      const size = isSmallMobile ? 30 : isMobile ? 40 : 60;
-
-      PC_LAYOUT.forEach((layout) => {
-        const x = (canvas.width * layout.x) / 100;
-        const y = (canvas.height * layout.y) / 100;
-
-        const distance = Math.sqrt(
-          Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2)
-        );
-
-        if (distance < size) {
-          const pcStatus = getPCStatus(layout.pcNumber);
-          if (pcStatus) {
-            foundPC = pcStatus.pcNumber;
-          }
-        }
-      });
-
-      setHoveredPC(foundPC);
-      canvas.style.cursor = foundPC ? "pointer" : "default";
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const size = isSmallMobile ? 30 : isMobile ? 40 : 60;
-
-      PC_LAYOUT.forEach((layout) => {
-        const x = (canvas.width * layout.x) / 100;
-        const y = (canvas.height * layout.y) / 100;
-
-        const distance = Math.sqrt(
-          Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2)
-        );
-
-        if (distance < size) {
-          const pcStatus = getPCStatus(layout.pcNumber);
-          if (pcStatus) {
-            setClickedPC(pcStatus);
-          }
-        }
-      });
-    };
-
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("click", handleClick);
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible && !raf) {
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    });
+    io.observe(container);
+    raf = requestAnimationFrame(tick);
 
     return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener("resize", updateSize);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("click", handleClick);
+      cancelAnimationFrame(raf);
+      io.disconnect();
     };
-  }, [pcs, hoveredPC, pcStatusMap, isMobile, isSmallMobile]);
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.current = { x: e.clientX, start: orbit.current, moved: false };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (e.pointerType === "mouse" && !drag.current) {
+      const r = el.getBoundingClientRect();
+      tiltOffset.current = ((e.clientY - r.top) / r.height - 0.5) * -8;
+    }
+    if (!drag.current) return;
+    const dx = e.clientX - drag.current.x;
+    if (!drag.current.moved && Math.abs(dx) > 6) {
+      drag.current.moved = true;
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* pointer already released */
+      }
+    }
+    if (drag.current.moved) {
+      orbit.current = Math.max(-MAX_ORBIT, Math.min(MAX_ORBIT, drag.current.start + dx * 0.3));
+    }
+  };
+
+  const endDrag = () => {
+    justDragged.current = !!drag.current?.moved;
+    drag.current = null;
+    // Clear after the click that follows this pointerup has been handled
+    window.setTimeout(() => (justDragged.current = false), 0);
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse") tiltOffset.current = 0;
+  };
+
+  const wasDragging = React.useCallback(() => justDragged.current, []);
+  const handleSelect = React.useCallback(
+    (id: string) => onSelect(id === selectedId ? null : id),
+    [onSelect, selectedId]
+  );
+  const handleHover = React.useCallback((id: string | null) => setHoveredId(id), []);
+
+  const activeId = hoveredId ?? selectedId;
+  const activePc = placed.find((p) => p.pc.pcNumber === activeId)?.pc ?? null;
+  const labelScale = Math.min(2.6, Math.max(1, 0.85 / scale));
 
   return (
-    <Box sx={{ position: "relative" }}>
-      <Box
-        sx={{
-          position: "relative",
-          width: "100%",
-          height: { xs: "400px", sm: "500px", md: "600px" },
-          borderRadius: 3,
-          overflow: "hidden",
-          background: alpha(theme.palette.background.paper, 0.3),
-          backdropFilter: "blur(10px)",
-          border: `2px solid ${alpha("#00CED1", 0.2)}`,
+    <Box
+      ref={containerRef}
+      data-cursor="Rotate"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onPointerLeave={handlePointerLeave}
+      onClick={() => {
+        if (!justDragged.current) onSelect(null);
+      }}
+      sx={{
+        position: "relative",
+        height: { xs: 330, sm: 460, md: 600 },
+        borderRadius: { xs: 4, md: 6 },
+        border: `1px solid ${tokens.border}`,
+        overflow: "hidden",
+        touchAction: "pan-y",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        perspective: "1500px",
+        perspectiveOrigin: "50% 30%",
+        background: `radial-gradient(ellipse 70% 60% at 50% 45%, ${alpha(tokens.cyan, 0.08)}, transparent 70%),
+          radial-gradient(ellipse 50% 40% at 85% 100%, ${alpha(tokens.purple, 0.1)}, transparent 70%),
+          #050507`,
+        "@keyframes pcPulse": {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.45 },
+        },
+      }}
+    >
+      {/* Scaler: keeps the logical scene size constant and fits it to the box */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: compact ? "55%" : "49%",
+          width: FLOOR_W,
+          height: FLOOR_H,
+          marginLeft: -FLOOR_W / 2,
+          marginTop: -FLOOR_H / 2,
+          transform: `scale(${scale})`,
+          transformStyle: "preserve-3d",
+          // The flat scaler/floor planes must not swallow hits meant for the stations
+          pointerEvents: "none",
         }}
       >
-        <canvas
-          ref={canvasRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "block",
-          }}
-        />
-
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: { xs: 10, md: 20 },
-            right: { xs: 10, md: 20 },
-            background: alpha("#0A1929", 0.9),
-            backdropFilter: "blur(10px)",
-            p: { xs: 1, sm: 1.5, md: 2 },
-            borderRadius: 2,
-            border: `1px solid ${alpha("#00CED1", 0.3)}`,
-          }}
+        <div
+          ref={floorRef}
+          style={
+            {
+              "--rot": `${BASE_ROT}deg`,
+              "--tilt": `${TILT}deg`,
+              position: "absolute",
+              inset: 0,
+              transformStyle: "preserve-3d",
+              transform: "rotateX(var(--tilt)) rotateZ(var(--rot))",
+              borderRadius: 28,
+              background: `
+                linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px) 0 0 / 30px 30px,
+                linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px) 0 0 / 30px 30px,
+                radial-gradient(ellipse at 50% 50%, #121218 0%, #09090c 75%)`,
+              boxShadow: `inset 0 0 0 1px ${alpha(tokens.cyan, 0.35)}, inset 0 0 80px ${alpha(tokens.cyan, 0.08)}`,
+            } as React.CSSProperties
+          }
         >
-          <Box
-            sx={{
+          {/* Slab edges (thickness below the floor) */}
+          <div
+            style={{
+              position: "absolute",
+              left: 14,
+              top: FLOOR_H,
+              width: FLOOR_W - 28,
+              height: SLAB,
+              transformOrigin: "top",
+              transform: "rotateX(-90deg)",
+              background: `linear-gradient(180deg, ${alpha(tokens.cyan, 0.35)}, #050507 70%)`,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 14,
+              top: -SLAB,
+              width: FLOOR_W - 28,
+              height: SLAB,
+              transformOrigin: "bottom",
+              transform: "rotateX(90deg)",
+              background: "#050507",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: -SLAB,
+              top: 14,
+              width: SLAB,
+              height: FLOOR_H - 28,
+              transformOrigin: "right",
+              transform: "rotateY(90deg)",
+              background: `linear-gradient(270deg, ${alpha(tokens.cyan, 0.25)}, #050507 70%)`,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: FLOOR_W,
+              top: 14,
+              width: SLAB,
+              height: FLOOR_H - 28,
+              transformOrigin: "left",
+              transform: "rotateY(-90deg)",
+              background: `linear-gradient(90deg, ${alpha(tokens.cyan, 0.25)}, #050507 70%)`,
+            }}
+          />
+
+          {/* Floor markings */}
+          <div
+            style={{
+              position: "absolute",
+              left: "8%",
+              right: "8%",
+              top: "50%",
+              height: 0,
+              borderTop: `2px dashed ${alpha(tokens.cyan, 0.18)}`,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
               display: "flex",
-              flexDirection: "column",
-              gap: { xs: 1, md: 1.5 },
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: tokens.fontDisplay,
+              fontWeight: 900,
+              fontSize: 64,
+              letterSpacing: "0.18em",
+              color: "rgba(255,255,255,0.045)",
+              pointerEvents: "none",
+              transform: "translateY(-2px)",
+            }}
+          >
+            EPIC LOUNGE
+          </div>
+
+          {placed.map(({ pc, x, y, rotation }) => (
+            <Station
+              key={pc.pcNumber}
+              pc={pc}
+              x={x}
+              y={y}
+              rotation={rotation}
+              active={pc.pcNumber === activeId}
+              labelScale={labelScale}
+              onSelect={handleSelect}
+              onHover={handleHover}
+              wasDragging={wasDragging}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: { xs: 10, md: 16 },
+          left: { xs: 10, md: 16 },
+          display: "flex",
+          gap: { xs: 0.5, md: 0.75 },
+          flexWrap: "wrap",
+          pointerEvents: "none",
+        }}
+      >
+        {Object.values(STATUS_META).map((meta) => (
+          <Box
+            key={meta.label}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.75,
+              px: { xs: 1, md: 1.25 },
+              py: 0.5,
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(8px)",
+              border: `1px solid ${tokens.border}`,
+              fontSize: { xs: "0.7rem", md: "0.78rem" },
+              color: tokens.textMuted,
+              fontWeight: 600,
             }}
           >
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: { xs: 1, md: 1.5 },
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: meta.color,
+                boxShadow: `0 0 8px ${meta.color}`,
               }}
-            >
-              <Box
-                sx={{
-                  width: { xs: 16, sm: 20, md: 24 },
-                  height: { xs: 16, sm: 20, md: 24 },
-                  borderRadius: 1,
-                  background: "#00CED1",
-                  boxShadow: "0 0 15px rgba(0,206,209,0.8)",
-                }}
-              />
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#B2BAC2",
-                  fontFamily: "Orbitron",
-                  fontWeight: 600,
-                  fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
-                }}
-              >
-                Available
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: { xs: 1, md: 1.5 },
-              }}
-            >
-              <Box
-                sx={{
-                  width: { xs: 16, sm: 20, md: 24 },
-                  height: { xs: 16, sm: 20, md: 24 },
-                  borderRadius: 1,
-                  background: "#FF4081",
-                  boxShadow: "0 0 15px rgba(255,64,129,0.8)",
-                }}
-              />
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#B2BAC2",
-                  fontFamily: "Orbitron",
-                  fontWeight: 600,
-                  fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
-                }}
-              >
-                Occupied
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: { xs: 1, md: 1.5 },
-              }}
-            >
-              <Box
-                sx={{
-                  width: { xs: 16, sm: 20, md: 24 },
-                  height: { xs: 16, sm: 20, md: 24 },
-                  borderRadius: 1,
-                  background: "#FFA726",
-                  boxShadow: "0 0 15px rgba(255,167,38,0.8)",
-                }}
-              />
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#B2BAC2",
-                  fontFamily: "Orbitron",
-                  fontWeight: 600,
-                  fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
-                }}
-              >
-                Maintenance
-              </Typography>
-            </Box>
+            />
+            {meta.label}
           </Box>
-        </Box>
+        ))}
       </Box>
 
-      <AnimatePresence>
-        {clickedPC && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Box
-              onClick={() => setClickedPC(null)}
-              sx={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.7)",
-                backdropFilter: "blur(10px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-              }}
+      {/* Hint */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: { xs: 10, md: 16 },
+          right: { xs: 10, md: 16 },
+          display: { xs: "none", sm: "inline-flex" },
+          alignItems: "center",
+          gap: 0.75,
+          color: tokens.textDim,
+          fontSize: "0.78rem",
+          fontWeight: 600,
+          pointerEvents: "none",
+        }}
+      >
+        <ThreeSixty sx={{ fontSize: 18 }} />
+        Drag to rotate
+      </Box>
+
+      {/* Info panel */}
+      <Box
+        sx={{
+          position: "absolute",
+          left: { xs: 10, md: 16 },
+          right: { xs: 10, md: "auto" },
+          bottom: { xs: 10, md: 16 },
+          pointerEvents: "none",
+        }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {activePc ? (
+            <motion.div
+              key={activePc.pcNumber}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.22 }}
             >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  minWidth: { md: 280 },
+                  px: 2,
+                  py: 1.5,
+                  borderRadius: 3,
+                  background: "rgba(10,10,14,0.85)",
+                  backdropFilter: "blur(12px)",
+                  border: `1px solid ${alpha(statusColor(activePc.status), 0.5)}`,
+                  boxShadow: `0 10px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)`,
+                }}
               >
                 <Box
                   sx={{
-                    background:
-                      "linear-gradient(135deg, #0A1929 0%, #132F4C 100%)",
-                    p: { xs: 3, md: 4 },
-                    borderRadius: 3,
-                    border: `2px solid ${
-                      clickedPC.status === "available"
-                        ? "#00CED1"
-                        : clickedPC.status === "occupied"
-                        ? "#FF4081"
-                        : "#FFA726"
-                    }`,
-                    boxShadow: `0 20px 60px ${
-                      clickedPC.status === "available"
-                        ? "rgba(0,206,209,0.4)"
-                        : clickedPC.status === "occupied"
-                        ? "rgba(255,64,129,0.4)"
-                        : "rgba(255,167,38,0.4)"
-                    }`,
-                    minWidth: { xs: 280, sm: 300 },
-                    mx: 2,
+                    width: 40,
+                    height: 40,
+                    flexShrink: 0,
+                    borderRadius: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    fontFamily: tokens.fontDisplay,
+                    fontWeight: 800,
+                    fontSize: "0.9rem",
+                    color: "#000",
+                    background: statusColor(activePc.status),
+                    boxShadow: `0 0 20px ${alpha(statusColor(activePc.status), 0.5)}`,
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontFamily: "Orbitron",
-                      fontWeight: 900,
-                      color:
-                        clickedPC.status === "available"
-                          ? "#00CED1"
-                          : clickedPC.status === "occupied"
-                          ? "#FF4081"
-                          : "#FFA726",
-                      mb: 2,
-                      fontSize: { xs: "1.5rem", md: "2rem" },
-                    }}
-                  >
-                    {clickedPC.name}
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#B2BAC2",
-                      mb: 1,
-                      fontSize: { xs: "1rem", md: "1.25rem" },
-                    }}
-                  >
-                    Status:{" "}
-                    <Box
-                      component="span"
-                      sx={{
-                        color:
-                          clickedPC.status === "available"
-                            ? "#00CED1"
-                            : clickedPC.status === "occupied"
-                            ? "#FF4081"
-                            : "#FFA726",
-                        fontFamily: "Orbitron",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {clickedPC.status}
-                    </Box>
-                  </Typography>
-                  {clickedPC.location && (
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: "#B2BAC2",
-                        fontSize: { xs: "0.9rem", md: "1rem" },
-                      }}
-                    >
-                      Location: {clickedPC.location}
-                    </Typography>
-                  )}
+                  {shortPcLabel(activePc.pcNumber)}
                 </Box>
-              </motion.div>
-            </Box>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontFamily: tokens.fontDisplay,
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                      lineHeight: 1.3,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {activePc.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.82rem", color: tokens.textMuted, lineHeight: 1.4 }}>
+                    <Box component="span" sx={{ color: statusColor(activePc.status), fontWeight: 700 }}>
+                      {STATUS_META[activePc.status]?.label ?? activePc.status}
+                    </Box>
+                    {activePc.location ? ` · ${activePc.location}` : ""}
+                  </Typography>
+                </Box>
+              </Box>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 999,
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(8px)",
+                  border: `1px solid ${tokens.border}`,
+                  color: tokens.textMuted,
+                  fontSize: { xs: "0.75rem", md: "0.8rem" },
+                  fontWeight: 600,
+                }}
+              >
+                <TouchApp sx={{ fontSize: 16 }} />
+                <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                  Tap a station · swipe to rotate
+                </Box>
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  Hover or click a station for details
+                </Box>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Box>
     </Box>
   );
 };

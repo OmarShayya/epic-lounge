@@ -1,369 +1,307 @@
-import React from "react";
-import { Box, Container, Typography, Button, Stack } from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import { Box, Button, Container, Stack, Typography } from "@mui/material";
+import { ArrowForward, SportsEsports } from "@mui/icons-material";
+import { Link as RouterLink } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import {
-  SportsEsports,
-  Restaurant,
-  KeyboardArrowDown,
-} from "@mui/icons-material";
+import { tokens } from "@theme/theme";
+import { menuApi } from "@services/api";
+import type { PCStats } from "@services/api";
+import { OPENING_HOURS } from "@utils/constants";
+import Magnetic from "@components/common/Magnetic";
+
+const ease = [0.22, 1, 0.36, 1] as const;
+
+/** Letters flip up into place in 3D, one after another. */
+const FlipWord: React.FC<{ word: string; delay: number; accent?: boolean }> = ({ word, delay, accent }) => (
+  <Box component="span" sx={{ display: "block", perspective: "600px", whiteSpace: "nowrap" }}>
+    {word.split("").map((ch, i) => (
+      <motion.span
+        key={i}
+        initial={{ rotateX: -95, y: 30, opacity: 0 }}
+        animate={{ rotateX: 0, y: 0, opacity: 1 }}
+        transition={{ delay: delay + i * 0.045, duration: 0.8, ease }}
+        style={{ display: "inline-block", transformOrigin: "50% 100%" }}
+        className={accent ? "gradient-text" : undefined}
+      >
+        {ch}
+      </motion.span>
+    ))}
+  </Box>
+);
 
 const Hero: React.FC = () => {
-  const navigate = useNavigate();
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [stats, setStats] = useState<PCStats | null>(null);
 
-  const scrollToFeatures = () => {
-    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Load three.js lazily so it never blocks the first paint
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+    const el = sceneRef.current;
+    if (!el) return;
+
+    const supportsWebGL = (() => {
+      try {
+        const c = document.createElement("canvas");
+        return !!(c.getContext("webgl2") || c.getContext("webgl"));
+      } catch {
+        return false;
+      }
+    })();
+    if (!supportsWebGL) return;
+
+    import("./heroScene")
+      .then(({ mountHeroScene }) => {
+        if (cancelled) return;
+        cleanup = mountHeroScene(el);
+        requestAnimationFrame(() => setSceneReady(true));
+      })
+      .catch((err) => console.error("Hero scene failed to load", err));
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, []);
+
+  // Live availability teaser
+  useEffect(() => {
+    let alive = true;
+    menuApi
+      .getPCStatus()
+      .then((d) => alive && setStats(d.stats))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const scrollToFeatures = () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
 
   return (
     <Box
+      component="section"
       sx={{
         position: "relative",
-        minHeight: "100vh",
+        mt: { xs: "-60px", md: "-72px" },
+        minHeight: { xs: "100svh", md: "100vh" },
         display: "flex",
-        alignItems: "center",
         overflow: "hidden",
-        background: "linear-gradient(135deg, #0A1929 0%, #1a237e 100%)",
       }}
     >
-      {/* Animated Background Grid */}
+      {/* Fallback glow (visible until / if WebGL loads) */}
       <Box
+        aria-hidden
         sx={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.08,
-          backgroundImage: `
-            repeating-linear-gradient(0deg, transparent, transparent 2px, #00CED1 2px, #00CED1 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, #9B51E0 2px, #9B51E0 4px)
-          `,
-          backgroundSize: "100px 100px",
-          animation: "gridMove 20s linear infinite",
-          "@keyframes gridMove": {
-            "0%": { transform: "translate(0, 0)" },
-            "100%": { transform: "translate(100px, 100px)" },
+          inset: 0,
+          background: {
+            xs: "radial-gradient(60% 40% at 50% 22%, rgba(0,206,209,0.18), transparent 70%), radial-gradient(50% 35% at 60% 30%, rgba(155,81,224,0.18), transparent 70%)",
+            md: "radial-gradient(35% 45% at 72% 45%, rgba(0,206,209,0.16), transparent 70%), radial-gradient(30% 40% at 78% 55%, rgba(155,81,224,0.18), transparent 70%)",
           },
         }}
       />
 
-      {/* Glowing Orbs */}
+      {/* 3D scene */}
       <Box
-        component={motion.div}
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        ref={sceneRef}
+        aria-hidden
         sx={{
           position: "absolute",
-          top: "10%",
-          right: "10%",
-          width: "500px",
-          height: "500px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(0,206,209,0.4) 0%, transparent 70%)",
-          filter: "blur(60px)",
+          inset: 0,
+          opacity: sceneReady ? 1 : 0,
+          transition: "opacity 1.2s ease",
         }}
       />
 
+      {/* Fades to keep text readable and blend into the page */}
       <Box
-        component={motion.div}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.3, 0.6, 0.3],
-        }}
-        transition={{
-          duration: 5,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 1,
-        }}
+        aria-hidden
         sx={{
           position: "absolute",
-          bottom: "10%",
-          left: "5%",
-          width: "600px",
-          height: "600px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(155,81,224,0.4) 0%, transparent 70%)",
-          filter: "blur(80px)",
+          inset: 0,
+          pointerEvents: "none",
+          background: {
+            xs: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 62%, #000 100%)",
+            md: "linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 45%, transparent 70%), linear-gradient(180deg, transparent 70%, #000 100%)",
+          },
         }}
       />
 
-      <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
-        <Stack spacing={4} alignItems="center" textAlign="center">
-          {/* Epic Lounge Text Logo */}
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <Typography
-              sx={{
-                fontSize: { xs: "3rem", sm: "4.5rem", md: "6rem" },
-                fontWeight: 900,
-                fontFamily: "Orbitron",
-                textTransform: "uppercase",
-                background:
-                  "linear-gradient(135deg, #00CED1 0%, #9B51E0 50%, #FF00FF 100%)",
-                backgroundSize: "200% auto",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                animation: "gradient 4s linear infinite",
-                textShadow: "0 0 80px rgba(0,206,209,0.5)",
-                letterSpacing: "0.05em",
-                position: "relative",
-                "@keyframes gradient": {
-                  "0%": { backgroundPosition: "0% center" },
-                  "100%": { backgroundPosition: "200% center" },
-                },
-                "&::before": {
-                  content: '"EPIC LOUNGE"',
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  zIndex: -1,
-                  WebkitTextStroke: "2px rgba(0,206,209,0.3)",
-                  WebkitTextFillColor: "transparent",
-                  filter: "blur(10px)",
-                },
-              }}
-            >
-              EPIC LOUNGE
-            </Typography>
-          </motion.div>
-
-          {/* Main Heading */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-          >
-            <Typography
-              variant="h1"
-              sx={{
-                fontSize: { xs: "2rem", sm: "3rem", md: "4rem" },
-                fontWeight: 900,
-                fontFamily: "Orbitron",
-                textTransform: "uppercase",
-                background:
-                  "linear-gradient(135deg, #FFFFFF 0%, #00CED1 50%, #9B51E0 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "0.02em",
-              }}
-            >
-              GAMER'S HEAVEN
-            </Typography>
-          </motion.div>
-
-          {/* Subtitle */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-          >
-            <Typography
-              variant="h4"
-              sx={{
-                fontSize: { xs: "1.2rem", sm: "1.5rem", md: "2rem" },
-                fontWeight: 600,
-                color: "#B2BAC2",
-                maxWidth: "800px",
-                lineHeight: 1.6,
-              }}
-            >
-              The Ultimate Gaming Experience in Lebanon
-            </Typography>
-          </motion.div>
-
-          {/* Description */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7, duration: 1 }}
-          >
-            <Typography
-              variant="body1"
-              sx={{
-                fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" },
-                color: "#B2BAC2",
-                maxWidth: "700px",
-                lineHeight: 1.8,
-              }}
-            >
-              Premium Gaming PCs • PS5 Rooms • Billiards • Foosball • Chess
-              Lounge • Live Football Matches • Coffee & Snacks
-            </Typography>
-          </motion.div>
-
-          {/* Gaming Controller Icon */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.9, duration: 0.6, type: "spring" }}
-          >
+      <Container
+        maxWidth="lg"
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          alignItems: { xs: "flex-end", md: "center" },
+          pt: { xs: "60px", md: "72px" },
+          pb: { xs: 6, md: 8 },
+        }}
+      >
+        <Stack spacing={{ xs: 2.5, md: 3.5 }} sx={{ maxWidth: 640, width: "100%" }}>
+          {/* Status pill */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease }}>
             <Box
+              component={stats ? RouterLink : "div"}
+              to="/gaming"
               sx={{
-                position: "relative",
-                width: { xs: 80, md: 100 },
-                height: { xs: 80, md: 100 },
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 1.25,
+                px: 1.75,
+                py: 0.85,
+                borderRadius: 999,
+                border: `1px solid ${tokens.border}`,
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(10px)",
+                color: tokens.text,
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                transition: "border-color .2s ease",
+                "&:hover": stats ? { borderColor: tokens.borderStrong } : {},
               }}
             >
               <Box
-                component={motion.div}
-                animate={{
-                  rotate: [0, 5, 0, -5, 0],
-                  scale: [1, 1.1, 1],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                component="span"
                 sx={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
+                  width: 8,
+                  height: 8,
                   borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(0,206,209,0.4) 0%, transparent 70%)",
-                  filter: "blur(20px)",
+                  background: tokens.green,
+                  color: "rgba(46,229,157,0.6)",
+                  animation: "pulse-dot 2s infinite",
                 }}
               />
-              <SportsEsports
-                sx={{
-                  fontSize: { xs: 60, md: 80 },
-                  color: "#00CED1",
-                  filter: "drop-shadow(0 0 20px rgba(0,206,209,0.8))",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              />
+              {stats ? (
+                <>
+                  <span>
+                    <b>{stats.available}</b> of {stats.total} PCs free right now
+                  </span>
+                  <ArrowForward sx={{ fontSize: 15, color: tokens.textMuted }} />
+                </>
+              ) : (
+                <span>
+                  Open {OPENING_HOURS[0]?.day.toLowerCase()} · {OPENING_HOURS[0]?.hours}
+                </span>
+              )}
             </Box>
           </motion.div>
 
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1, duration: 0.8 }}
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: tokens.fontDisplay,
+              fontWeight: 900,
+              fontSize: { xs: "3.2rem", sm: "4.6rem", md: "6.4rem" },
+              lineHeight: 0.92,
+              letterSpacing: "0.01em",
+            }}
           >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={3}
-              sx={{ mt: 2 }}
-            >
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<Restaurant />}
-                onClick={() => navigate("/menu")}
-                sx={{
-                  px: 5,
-                  py: 2,
-                  fontSize: "1.1rem",
-                  background:
-                    "linear-gradient(135deg, #00CED1 0%, #9B51E0 100%)",
-                  boxShadow: "0 8px 32px rgba(0,206,209,0.4)",
-                  fontFamily: "Orbitron",
-                  fontWeight: 700,
-                  "&:hover": {
-                    background:
-                      "linear-gradient(135deg, #5FE3E6 0%, #BA7FED 100%)",
-                    boxShadow: "0 12px 48px rgba(155,81,224,0.6)",
-                    transform: "translateY(-4px)",
-                  },
-                }}
-              >
-                View Menu
-              </Button>
+            <FlipWord word="EPIC" delay={0.15} />
+            <FlipWord word="LOUNGE" delay={0.35} accent />
+          </Typography>
 
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75, duration: 0.7, ease }}>
+            <Typography sx={{ color: tokens.textMuted, fontSize: { xs: "1rem", md: "1.25rem" }, maxWidth: 520 }}>
+              <Box component="span" sx={{ color: tokens.text, fontWeight: 600 }}>
+                Gamer's Heaven.
+              </Box>{" "}
+              High-end PCs, private PS5 rooms, billiards, live football and good coffee — all under one roof.
+            </Typography>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.7, ease }}>
+            <Stack direction="row" spacing={1.25} sx={{ pt: 0.5 }}>
+              <Magnetic className="hero-cta">
+                <Button
+                  component={RouterLink}
+                  to="/menu"
+                  variant="contained"
+                  size="large"
+                  endIcon={<ArrowForward />}
+                  sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 4 }, whiteSpace: "nowrap" }}
+                >
+                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>View menu</Box>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>View the menu</Box>
+                </Button>
+              </Magnetic>
               <Button
+                component={RouterLink}
+                to="/gaming"
                 variant="outlined"
                 size="large"
                 startIcon={<SportsEsports />}
-                onClick={scrollToFeatures}
-                sx={{
-                  px: 5,
-                  py: 2,
-                  fontSize: "1.1rem",
-                  borderColor: "#00CED1",
-                  color: "#00CED1",
-                  borderWidth: 2,
-                  fontFamily: "Orbitron",
-                  fontWeight: 700,
-                  "&:hover": {
-                    borderColor: "#9B51E0",
-                    color: "#9B51E0",
-                    borderWidth: 2,
-                    background: "rgba(155,81,224,0.1)",
-                    transform: "translateY(-4px)",
-                  },
-                }}
+                className="hero-cta"
+                sx={{ backdropFilter: "blur(8px)", px: { xs: 2, sm: 4 }, whiteSpace: "nowrap" }}
               >
-                Explore Features
+                <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Live PCs</Box>
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Live PC status</Box>
               </Button>
             </Stack>
           </motion.div>
 
-          {/* Scroll Indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 1 }}
-          >
-            <Box
-              onClick={scrollToFeatures}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1, duration: 0.8 }}>
+            <Stack
+              direction="row"
+              flexWrap="wrap"
+              useFlexGap
+              spacing={{ xs: 1.5, md: 2.5 }}
               sx={{
-                mt: 6,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                animation: "bounce 2s infinite",
-                "@keyframes bounce": {
-                  "0%, 100%": { transform: "translateY(0)" },
-                  "50%": { transform: "translateY(10px)" },
-                },
+                display: { xs: "none", sm: "flex" },
+                color: tokens.textDim,
+                fontSize: "0.82rem",
+                fontWeight: 500,
+                letterSpacing: "0.04em",
               }}
             >
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "#00CED1",
-                  textTransform: "uppercase",
-                  letterSpacing: 2,
-                  mb: 1,
-                  fontFamily: "Orbitron",
-                  fontWeight: 600,
-                }}
-              >
-                Scroll Down
-              </Typography>
-              <KeyboardArrowDown
-                sx={{
-                  fontSize: 40,
-                  color: "#00CED1",
-                }}
-              />
-            </Box>
+              {["RTX 5070 GPUs", "244Hz monitors", "Private PS5 rooms", "Fiber internet"].map((f) => (
+                <Box key={f} component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+                  <Box component="span" sx={{ width: 4, height: 4, background: tokens.cyan, transform: "rotate(45deg)" }} />
+                  {f}
+                </Box>
+              ))}
+            </Stack>
           </motion.div>
         </Stack>
       </Container>
+
+      {/* Scroll hint */}
+      <Box
+        component="button"
+        onClick={scrollToFeatures}
+        aria-label="Scroll to features"
+        sx={{
+          display: { xs: "none", md: "flex" },
+          position: "absolute",
+          bottom: 28,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1,
+          width: 26,
+          height: 42,
+          borderRadius: 999,
+          border: `1.5px solid ${tokens.borderStrong}`,
+          background: "transparent",
+          justifyContent: "center",
+          pt: 1,
+          "&::after": {
+            content: '""',
+            width: 3,
+            height: 8,
+            borderRadius: 2,
+            background: tokens.text,
+            animation: "scrollhint 1.8s ease-in-out infinite",
+          },
+          "@keyframes scrollhint": {
+            "0%": { transform: "translateY(0)", opacity: 1 },
+            "70%": { transform: "translateY(12px)", opacity: 0 },
+            "100%": { transform: "translateY(0)", opacity: 0 },
+          },
+        }}
+      />
     </Box>
   );
 };
