@@ -5,7 +5,7 @@ import { ThreeSixty, TouchApp } from "@mui/icons-material";
 import { PC_LAYOUT } from "@/config/pcLayout";
 import type { PCStatus } from "@/services/api";
 import { tokens } from "@theme/theme";
-import { STATUS_META, normalizePcNumber, shortPcLabel, statusColor } from "./statusMeta";
+import { STATUS_META, normalizePcNumber, reservationBadge, shortPcLabel, statusColor } from "./statusMeta";
 
 /* ------------------------------------------------------------------ */
 /* Scene constants (logical px, the whole scene is scaled to fit)      */
@@ -792,6 +792,11 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
                     </Box>
                     {activePc.location ? ` · ${activePc.location}` : ""}
                   </Typography>
+                  {reservationBadge(activePc) && (
+                    <Typography sx={{ fontSize: "0.78rem", color: tokens.purpleBright, fontWeight: 600, lineHeight: 1.4 }}>
+                      {reservationBadge(activePc)}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             </motion.div>

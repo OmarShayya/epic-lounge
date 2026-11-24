@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
-import { ArrowForward, SportsEsports } from "@mui/icons-material";
+import { ArrowForward, EventAvailable } from "@mui/icons-material";
 import { Link as RouterLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { tokens } from "@theme/theme";
@@ -218,27 +218,27 @@ const Hero: React.FC = () => {
               <Magnetic className="hero-cta">
                 <Button
                   component={RouterLink}
-                  to="/menu"
+                  to="/reserve"
                   variant="contained"
                   size="large"
-                  endIcon={<ArrowForward />}
-                  sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 4 }, whiteSpace: "nowrap" }}
+                  startIcon={<EventAvailable />}
+                  sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 4 }, whiteSpace: "nowrap", fontWeight: 700 }}
                 >
-                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>View menu</Box>
-                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>View the menu</Box>
+                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Book now</Box>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Book a station</Box>
                 </Button>
               </Magnetic>
               <Button
                 component={RouterLink}
-                to="/gaming"
+                to="/menu"
                 variant="outlined"
                 size="large"
-                startIcon={<SportsEsports />}
+                endIcon={<ArrowForward />}
                 className="hero-cta"
                 sx={{ backdropFilter: "blur(8px)", px: { xs: 2, sm: 4 }, whiteSpace: "nowrap" }}
               >
-                <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Live PCs</Box>
-                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Live PC status</Box>
+                <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>View menu</Box>
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>View the menu</Box>
               </Button>
             </Stack>
           </motion.div>

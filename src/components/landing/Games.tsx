@@ -1,12 +1,12 @@
 import React from "react";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
-import { ArrowForward, Phone } from "@mui/icons-material";
+import { ArrowForward, EventAvailable, Phone } from "@mui/icons-material";
 import { Link as RouterLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { tokens } from "@theme/theme";
 import { CONTACT_INFO } from "@utils/constants";
 import { GAMES, ARENAS } from "@/config/games";
-import type { Game, Arena } from "@/config/games";
+import type { Game, Arena, ArenaCta } from "@/config/games";
 import SectionHeading from "@components/common/SectionHeading";
 import TiltCard from "@components/common/TiltCard";
 import Reveal from "@components/common/Reveal";
@@ -106,6 +106,28 @@ const GameCover: React.FC<{ game: Game; index: number; total: number }> = ({ gam
   );
 };
 
+const CtaButton: React.FC<{ cta: ArenaCta; primary?: boolean }> = ({ cta, primary }) => {
+  const sx = primary
+    ? {}
+    : { color: "#fff", borderColor: "rgba(255,255,255,0.45)", background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)" };
+  return cta.kind === "link" ? (
+    <Button
+      component={RouterLink}
+      to={cta.to}
+      variant={primary ? "contained" : "outlined"}
+      startIcon={primary ? <EventAvailable /> : undefined}
+      endIcon={primary ? undefined : <ArrowForward />}
+      sx={sx}
+    >
+      {cta.label}
+    </Button>
+  ) : (
+    <Button href={`tel:${CONTACT_INFO.phone}`} variant={primary ? "contained" : "outlined"} startIcon={<Phone />} sx={sx}>
+      {cta.label}
+    </Button>
+  );
+};
+
 /** Big split banner: PC arena vs PS5 rooms, with wide key art behind each. */
 const ArenaPanel: React.FC<{ arena: Arena; index: number }> = ({ arena, index }) => (
   <Reveal delay={index * 0.1} style={{ flex: 1, minWidth: 0 }}>
@@ -172,22 +194,10 @@ const ArenaPanel: React.FC<{ arena: Arena; index: number }> = ({ arena, index })
             </Box>
           ))}
         </Stack>
-        <Box sx={{ pt: 1 }}>
-          {arena.cta.kind === "link" ? (
-            <Button component={RouterLink} to={arena.cta.to} variant="contained" endIcon={<ArrowForward />}>
-              {arena.cta.label}
-            </Button>
-          ) : (
-            <Button
-              href={`tel:${CONTACT_INFO.phone}`}
-              variant="contained"
-              startIcon={<Phone />}
-              sx={{ background: "#fff", "&:hover": { background: "#e9e9ee" } }}
-            >
-              {arena.cta.label}
-            </Button>
-          )}
-        </Box>
+        <Stack direction="row" spacing={1} sx={{ pt: 1, flexWrap: "wrap", rowGap: 1 }}>
+          <CtaButton cta={arena.cta} primary />
+          {arena.secondary && <CtaButton cta={arena.secondary} />}
+        </Stack>
       </Stack>
     </TiltCard>
   </Reveal>

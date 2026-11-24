@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Container, IconButton, Tooltip, Typography, alpha } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
-import { ErrorOutline, Refresh } from "@mui/icons-material";
+import { ErrorOutline, EventAvailable, Refresh, EventBusy } from "@mui/icons-material";
+import { Link as RouterLink } from "react-router-dom";
 import PCGrid3D from "@/components/gaming/PCGrid3D";
-import { STATUS_META, sortPcs, statusColor } from "@/components/gaming/statusMeta";
+import { STATUS_META, isPlayStation, reservationBadge, sortPcs, statusColor } from "@/components/gaming/statusMeta";
 import { menuApi } from "../services/api";
-import type { PCStats, PCStatus } from "../services/api";
+import type { PCStats, PCStatus, StationType } from "../services/api";
 import { tokens } from "@theme/theme";
 import arenaPc from "@assets/games/arena-pc.webp";
+import arenaPs5 from "@assets/games/arena-ps5.webp";
 
 const POLL_MS = 30_000;
 
@@ -18,6 +20,7 @@ const POLL_MS = 30_000;
 const usePCStatus = () => {
   const [pcs, setPcs] = useState<PCStatus[] | null>(null);
   const [stats, setStats] = useState<PCStats | null>(null);
+  const [statsByType, setStatsByType] = useState<Partial<Record<StationType, PCStats>> | null>(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -31,6 +34,7 @@ const usePCStatus = () => {
       const data = await menuApi.getPCStatus();
       setPcs(data.pcs ?? []);
       setStats(data.stats ?? null);
+      setStatsByType(data.statsByType ?? null);
       setError(null);
       setUpdatedAt(Date.now());
     } catch (err) {
@@ -70,7 +74,7 @@ const usePCStatus = () => {
     };
   }, [load]);
 
-  return { pcs, stats, fetching, error, updatedAt, reload: load };
+  return { pcs, stats, statsByType, fetching, error, updatedAt, reload: load };
 };
 
 /* ------------------------------------------------------------------ */
@@ -252,6 +256,98 @@ const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => vo
       <Typography sx={{ fontSize: "0.78rem", color: tokens.textDim, minHeight: "1.2em" }}>
         {pc.location || " "}
       </Typography>
+      <ReservedBadge pc={pc} />
+    </Box>
+  );
+};
+
+/** "Reserved 8:00 PM" chip for stations with an upcoming booking. */
+const ReservedBadge: React.FC<{ pc: PCStatus }> = ({ pc }) => {
+  const text = reservationBadge(pc);
+  if (!text) return null;
+  return (
+    <Box
+      component="span"
+      sx={{
+        alignSelf: "flex-start",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.5,
+        mt: 0.25,
+        px: 0.9,
+        py: 0.25,
+        borderRadius: 999,
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        color: tokens.purpleBright,
+        background: alpha(tokens.purple, 0.16),
+        border: `1px solid ${alpha(tokens.purple, 0.4)}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <EventBusy sx={{ fontSize: 13 }} />
+      {text}
+    </Box>
+  );
+};
+
+/** Bigger card for a private PlayStation room. */
+const RoomCard: React.FC<{ pc: PCStatus }> = ({ pc }) => {
+  const color = statusColor(pc.status);
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 4,
+        minHeight: { xs: 150, md: 180 },
+        p: { xs: 2, md: 2.5 },
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        border: `1px solid ${alpha(color, 0.45)}`,
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          background: `url(${arenaPs5}) 40% 25% / cover no-repeat`,
+          opacity: 0.4,
+          filter: pc.status === "available" ? "none" : "grayscale(0.6)",
+        },
+        "&::after": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.85) 75%)",
+        },
+      }}
+    >
+      <Box sx={{ position: "relative", zIndex: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: color,
+              color: alpha(color, 0.6),
+              boxShadow: `0 0 12px ${alpha(color, 0.8)}`,
+              animation: pc.status === "available" ? "pulse-dot 2.2s infinite" : "none",
+            }}
+          />
+          <Typography sx={{ fontSize: "0.82rem", fontWeight: 700, color, letterSpacing: "0.04em" }}>
+            {STATUS_META[pc.status]?.label ?? pc.status}
+          </Typography>
+        </Box>
+        <Typography sx={{ fontFamily: tokens.fontDisplay, fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.3rem" }, mt: 0.75 }}>
+          {pc.name}
+        </Typography>
+        <Typography sx={{ color: tokens.textMuted, fontSize: "0.82rem" }}>
+          {pc.pcNumber}
+          {pc.location ? ` · ${pc.location}` : ""}
+        </Typography>
+        <ReservedBadge pc={pc} />
+      </Box>
     </Box>
   );
 };
@@ -261,21 +357,25 @@ const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => vo
 /* ------------------------------------------------------------------ */
 
 const PCStatusPage: React.FC = () => {
-  const { pcs, stats, fetching, error, updatedAt, reload } = usePCStatus();
+  const { pcs, stats, statsByType, fetching, error, updatedAt, reload } = usePCStatus();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
 
-  const sorted = useMemo(() => (pcs ? sortPcs(pcs) : []), [pcs]);
+  // The 3D floor map and the PC grid only show PCs; PlayStation rooms get their own section
+  const sorted = useMemo(() => (pcs ? sortPcs(pcs.filter((p) => !isPlayStation(p))) : []), [pcs]);
+  const rooms = useMemo(() => (pcs ? sortPcs(pcs.filter(isPlayStation)) : []), [pcs]);
   const counts = useMemo(() => {
+    if (statsByType?.pc) return statsByType.pc;
     if (stats) return stats;
-    const list = pcs ?? [];
+    const list = sorted;
     return {
       total: list.length,
       available: list.filter((p) => p.status === "available").length,
       occupied: list.filter((p) => p.status === "occupied").length,
       maintenance: list.filter((p) => p.status === "maintenance").length,
     };
-  }, [pcs, stats]);
+  }, [sorted, stats, statsByType]);
+  const roomsFree = rooms.filter((r) => r.status === "available").length;
 
   const initialLoading = pcs === null && !error;
   const hasData = pcs !== null;
@@ -343,14 +443,23 @@ const PCStatusPage: React.FC = () => {
                 variant="h1"
                 sx={{ fontSize: { xs: "2rem", sm: "2.6rem", md: "3.3rem" }, textTransform: "uppercase" }}
               >
-                PC availability
+                Live availability
               </Typography>
               <Typography sx={{ color: tokens.textMuted, mt: 1, fontSize: { xs: "0.98rem", md: "1.08rem" } }}>
-                See which gaming stations are free right now, before you head over.
+                See which PCs and PS5 rooms are free right now — or book one ahead.
               </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Button
+                component={RouterLink}
+                to="/reserve"
+                variant="contained"
+                startIcon={<EventAvailable />}
+                sx={{ fontWeight: 700, order: { xs: 3, md: 0 }, width: { xs: "100%", sm: "auto" } }}
+              >
+                Reserve a station
+              </Button>
               <LiveIndicator updatedAt={updatedAt} stale={!!error && hasData} />
               <Tooltip title="Refresh now">
                 <IconButton
@@ -474,7 +583,7 @@ const PCStatusPage: React.FC = () => {
               variant="h3"
               sx={{ fontSize: { xs: "1.15rem", md: "1.4rem" }, textTransform: "uppercase", letterSpacing: "0.04em" }}
             >
-              All stations
+              Gaming PCs
             </Typography>
             {hasData && (
               <Typography sx={{ color: tokens.textMuted, fontSize: "0.9rem" }}>
@@ -513,6 +622,47 @@ const PCStatusPage: React.FC = () => {
             </Typography>
           )}
         </Box>
+
+        {/* PlayStation rooms */}
+        {(initialLoading || rooms.length > 0) && (
+          <Box sx={{ mt: { xs: 5, md: 7 } }}>
+            <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2, mb: 2, flexWrap: "wrap" }}>
+              <Typography variant="h3" sx={{ fontSize: { xs: "1.15rem", md: "1.4rem" }, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                PlayStation rooms
+              </Typography>
+              {hasData && (
+                <Typography sx={{ color: tokens.textMuted, fontSize: "0.9rem" }}>
+                  <Box component="span" sx={{ color: STATUS_META.available.color, fontWeight: 700 }}>
+                    {statsByType?.playstation?.available ?? roomsFree}
+                  </Box>{" "}
+                  of {statsByType?.playstation?.total ?? rooms.length} free
+                </Typography>
+              )}
+            </Box>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: `repeat(${Math.min(Math.max(rooms.length, 2), 3)}, 1fr)` },
+                gap: { xs: 1.25, md: 2 },
+              }}
+            >
+              {initialLoading
+                ? Array.from({ length: 2 }).map((_, i) => <Box key={i} className="skeleton" sx={{ height: 170, borderRadius: 4 }} />)
+                : rooms.map((pc) => <RoomCard key={pc.pcNumber} pc={pc} />)}
+            </Box>
+            {hasData && (
+              <Button
+                component={RouterLink}
+                to="/reserve?type=playstation"
+                variant="outlined"
+                startIcon={<EventAvailable />}
+                sx={{ mt: 2 }}
+              >
+                Book a PS5 room
+              </Button>
+            )}
+          </Box>
+        )}
       </Container>
     </Box>
   );
