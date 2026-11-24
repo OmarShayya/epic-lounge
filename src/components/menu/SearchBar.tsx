@@ -32,7 +32,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => (
       },
     }}
     sx={{
-      "& .MuiOutlinedInput-root": { height: 52, fontSize: "1rem", borderRadius: 999 },
+      "& .MuiOutlinedInput-root": {
+        height: 52,
+        fontSize: "1rem",
+        borderRadius: 999,
+        background: tokens.menuCard,
+        boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset",
+      },
+      "& .MuiOutlinedInput-notchedOutline": { borderColor: tokens.menuBorder },
       // 16px+ font prevents iOS zoom-on-focus
       "& input": { fontSize: 16 },
     }}

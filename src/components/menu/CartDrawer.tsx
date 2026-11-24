@@ -68,8 +68,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
             height: { sm: "100%" },
             borderTopLeftRadius: { xs: "24px", sm: 0 },
             borderTopRightRadius: { xs: "24px", sm: 0 },
-            border: `1px solid ${tokens.border}`,
-            background: tokens.bg,
+            border: `1px solid ${tokens.menuBorder}`,
+            background: tokens.menuBg,
             display: "flex",
             flexDirection: "column",
           },
@@ -206,8 +206,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
             px: 2.5,
             pt: 2,
             pb: "calc(16px + env(safe-area-inset-bottom))",
-            borderTop: `1px solid ${tokens.border}`,
-            background: tokens.surface,
+            borderTop: `1px solid ${tokens.menuBorder}`,
+            background: tokens.menuCard,
           }}
         >
           <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.25 }}>

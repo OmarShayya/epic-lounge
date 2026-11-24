@@ -11,24 +11,25 @@ import { useMenuProducts } from "@hooks/useProducts";
 import { useCart } from "../context/CartContext";
 import { tokens } from "@theme/theme";
 import { sectionDomId } from "@utils/helpers";
+import { getCategoryStyle } from "@utils/categoryStyle";
 
 const normalize = (s: string) =>
   s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+    .replace(/[\u0300-\u036f]/g, "");
 
 const MenuSkeleton: React.FC = () => (
   <Box aria-busy="true" aria-label="Loading menu">
     <Stack direction="row" spacing={1} sx={{ py: 1.25, mb: 3, overflow: "hidden" }}>
       {[88, 110, 96, 120, 80].map((w, i) => (
-        <Box key={i} className="skeleton" sx={{ width: w, height: 38, borderRadius: "999px", flexShrink: 0 }} />
+        <Box key={i} className="skeleton" sx={{ width: w, height: 40, borderRadius: "999px", flexShrink: 0 }} />
       ))}
     </Stack>
     <Box className="skeleton" sx={{ width: 140, height: 24, mb: 2 }} />
     <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" } }}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <Box key={i} className="skeleton" sx={{ height: 112, borderRadius: "16px" }} />
+        <Box key={i} className="skeleton" sx={{ height: 92, borderRadius: "18px" }} />
       ))}
     </Box>
   </Box>
@@ -44,23 +45,40 @@ const MenuPage: React.FC = () => {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
+  // Every category gets a stable colour + icon (based on the full list, so search doesn't reshuffle them)
+  const allSections: MenuSection[] = useMemo(
+    () =>
+      Object.values(groupedProducts).map((g, i) => ({
+        category: g.category,
+        products: g.products,
+        style: getCategoryStyle(g.category.name, i),
+      })),
+    [groupedProducts]
+  );
+
   // Sections (filtered by search)
   const sections: MenuSection[] = useMemo(() => {
-    const all = Object.values(groupedProducts);
     const q = normalize(query.trim());
-    if (!q) return all;
-    return all
+    if (!q) return allSections;
+    return allSections
       .map((g) => ({
-        category: g.category,
+        ...g,
         products: g.products.filter((p) =>
           normalize(`${p.name} ${p.description ?? ""} ${g.category.name}`).includes(q)
         ),
       }))
       .filter((g) => g.products.length > 0);
-  }, [groupedProducts, query]);
+  }, [allSections, query]);
 
   const chips: CategoryChip[] = useMemo(
-    () => sections.map((s) => ({ id: s.category.id, name: s.category.name, count: s.products.length })),
+    () =>
+      sections.map((s) => ({
+        id: s.category.id,
+        name: s.category.name,
+        count: s.products.length,
+        color: s.style.color,
+        Icon: s.style.Icon,
+      })),
     [sections]
   );
 
@@ -117,7 +135,18 @@ const MenuPage: React.FC = () => {
   const hasCart = getTotalItems() > 0;
 
   return (
-    <Box sx={{ pb: hasCart ? 14 : 8 }}>
+    <Box
+      sx={{
+        pb: hasCart ? 14 : 8,
+        // Lifted charcoal with soft colour glows — clearer than pure black
+        mt: { xs: "-60px", md: "-72px" },
+        pt: { xs: "60px", md: "72px" },
+        minHeight: "100vh",
+        background: `radial-gradient(900px 420px at 90% 0%, rgba(155,81,224,0.16), transparent 60%),
+          radial-gradient(700px 380px at 0% 10%, rgba(0,206,209,0.10), transparent 60%),
+          ${tokens.menuBg}`,
+      }}
+    >
       <Container maxWidth="lg" sx={{ pt: { xs: 2.5, md: 5 }, px: { xs: 2, sm: 3 } }}>
         <MenuHeader query={query} onQueryChange={setQuery} />
 

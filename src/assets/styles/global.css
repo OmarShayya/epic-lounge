@@ -266,7 +266,7 @@ html.cursor-hover.cursor-down .cursor-ring__inner {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #0e0e12 0px, #18181e 160px, #0e0e12 320px);
+  background: linear-gradient(90deg, #15161e 0px, #1f2029 160px, #15161e 320px);
   background-size: 800px 100%;
   animation: shimmer 1.4s linear infinite;
   border-radius: 12px;

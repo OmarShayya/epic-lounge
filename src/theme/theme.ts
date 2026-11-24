@@ -22,6 +22,11 @@ export const tokens = {
   red: "#FF4D6D",
   amber: "#FFB347",
   whatsapp: "#25D366",
+  // Menu page: lifted charcoal surfaces so it reads clearer than pure black
+  menuBg: "#0F1017",
+  menuCard: "#171821",
+  menuCardHover: "#1D1E28",
+  menuBorder: "rgba(255,255,255,0.075)",
   fontDisplay: '"Orbitron", "Space Grotesk", system-ui, sans-serif',
   fontBody: '"Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif',
   headerHeight: { xs: 60, md: 72 },

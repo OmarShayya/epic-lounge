@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, alpha } from "@mui/material";
+import type { SvgIconComponent } from "@mui/icons-material";
 import type { Product } from "../../types/index";
 import { useCart } from "../../context/CartContext";
 import { tokens } from "@theme/theme";
@@ -8,14 +9,20 @@ import QtyStepper from "./QtyStepper";
 
 interface ProductCardProps {
   product: Product;
+  accent: string;
+  Icon: SvgIconComponent;
 }
 
-/** One menu item: name, description, price, optional photo, and the add / quantity control. */
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+/**
+ * One menu item as a clear row: photo (or a coloured category icon), name,
+ * short description, price, and the add / quantity control.
+ */
+const ProductCard: React.FC<ProductCardProps> = ({ product, accent, Icon }) => {
   const { addItem, updateQuantity, getQuantity } = useCart();
   const [imgOk, setImgOk] = useState(true);
   const qty = getQuantity(product.id);
   const hasImage = !!product.image && imgOk;
+  const inCart = qty > 0;
 
   const add = () => {
     haptic();
@@ -29,31 +36,77 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <Box
       sx={{
-        position: "relative",
         display: "flex",
-        gap: 2,
+        alignItems: "center",
+        gap: { xs: 1.5, md: 1.75 },
         height: "100%",
-        alignItems: hasImage ? "stretch" : "center",
-        p: { xs: 1.75, md: 2 },
-        borderRadius: 4,
-        background: tokens.surface,
-        border: `1px solid ${qty > 0 ? "rgba(0,206,209,0.45)" : tokens.border}`,
-        transition: "border-color .25s ease, background-color .25s ease",
-        "&:hover": { borderColor: qty > 0 ? "rgba(0,206,209,0.7)" : tokens.borderStrong, background: tokens.surfaceRaised },
+        p: { xs: 1.25, md: 1.5 },
+        pr: { xs: 1.5, md: 1.75 },
+        borderRadius: "18px",
+        background: inCart ? `linear-gradient(90deg, ${alpha(tokens.cyan, 0.09)}, ${tokens.menuCard} 60%)` : tokens.menuCard,
+        border: `1px solid ${inCart ? alpha(tokens.cyan, 0.5) : tokens.menuBorder}`,
+        boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.25)",
+        transition: "border-color .25s ease, background-color .25s ease, transform .25s ease",
+        "&:hover": {
+          background: inCart ? undefined : tokens.menuCardHover,
+          borderColor: inCart ? alpha(tokens.cyan, 0.7) : "rgba(255,255,255,0.14)",
+        },
       }}
     >
+      {/* Photo or category icon */}
+      <Box
+        sx={{
+          position: "relative",
+          width: { xs: 64, md: 72 },
+          height: { xs: 64, md: 72 },
+          flexShrink: 0,
+          borderRadius: "14px",
+          overflow: "hidden",
+          display: "grid",
+          placeItems: "center",
+          background: hasImage
+            ? tokens.surfaceRaised
+            : `radial-gradient(120% 120% at 20% 0%, ${alpha(accent, 0.32)}, ${alpha(accent, 0.08)} 70%)`,
+          border: `1px solid ${alpha(accent, hasImage ? 0.15 : 0.3)}`,
+        }}
+      >
+        {hasImage ? (
+          <Box
+            component="img"
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            onError={() => setImgOk(false)}
+            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <Icon sx={{ color: accent, fontSize: { xs: 28, md: 32 } }} />
+        )}
+      </Box>
+
       {/* Text */}
-      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <Typography sx={{ fontWeight: 600, fontSize: "1.02rem", lineHeight: 1.3, color: tokens.text }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontWeight: 600,
+            fontSize: { xs: "1rem", md: "1.05rem" },
+            lineHeight: 1.25,
+            color: "#fff",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {product.name}
         </Typography>
         {product.description && (
           <Typography
             sx={{
-              mt: 0.5,
-              color: tokens.textMuted,
-              fontSize: "0.85rem",
-              lineHeight: 1.45,
+              mt: 0.25,
+              color: "#A9AAB8",
+              fontSize: "0.82rem",
+              lineHeight: 1.4,
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
@@ -63,44 +116,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.description}
           </Typography>
         )}
-        <Box sx={{ mt: "auto", pt: hasImage || product.description ? 1.25 : 0.5, display: "flex", alignItems: "baseline", gap: 1, flexWrap: "wrap" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "1.08rem", color: tokens.text }}>
+        <Box sx={{ mt: 0.75, display: "flex", alignItems: "baseline", columnGap: 1, flexWrap: "wrap" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.05rem", color: accent, lineHeight: 1.3 }}>
             {formatUSD(product.pricing.usd)}
           </Typography>
-          <Typography sx={{ color: tokens.textDim, fontSize: "0.78rem", fontWeight: 500 }}>
+          <Typography sx={{ color: "#7C7D8C", fontSize: "0.78rem", fontWeight: 500 }}>
             {formatLBP(product.pricing.lbp)}
           </Typography>
         </Box>
       </Box>
 
-      {/* Photo + control */}
-      <Box sx={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "flex-end" }}>
-        {hasImage ? (
-          <Box sx={{ position: "relative", alignSelf: "flex-start", mb: 1 }}>
-            <Box
-              component="img"
-              src={product.image}
-              alt={product.name}
-              loading="lazy"
-              onError={() => setImgOk(false)}
-              sx={{
-                width: { xs: 96, md: 104 },
-                height: { xs: 96, md: 104 },
-                objectFit: "cover",
-                borderRadius: 3,
-                background: tokens.surfaceRaised,
-              }}
-            />
-            <Box sx={{ position: "absolute", right: -6, bottom: -10 }}>
-              <QtyStepper quantity={qty} onAdd={add} onRemove={remove} name={product.name} />
-            </Box>
-          </Box>
-        ) : (
-          <QtyStepper quantity={qty} onAdd={add} onRemove={remove} name={product.name} />
-        )}
+      <Box sx={{ flexShrink: 0 }}>
+        <QtyStepper quantity={qty} onAdd={add} onRemove={remove} name={product.name} />
       </Box>
     </Box>
   );
 };
 
-export default React.memo(ProductCard);
+export default ProductCard;

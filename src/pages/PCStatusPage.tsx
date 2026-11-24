@@ -7,6 +7,7 @@ import { STATUS_META, sortPcs, statusColor } from "@/components/gaming/statusMet
 import { menuApi } from "../services/api";
 import type { PCStats, PCStatus } from "../services/api";
 import { tokens } from "@theme/theme";
+import arenaPc from "@assets/games/arena-pc.webp";
 
 const POLL_MS = 30_000;
 
@@ -285,8 +286,28 @@ const PCStatusPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ pt: { xs: 3, md: 6 }, pb: { xs: 8, md: 12 } }}>
-      <Container maxWidth="lg">
+    <Box sx={{ position: "relative", pt: { xs: 3, md: 6 }, pb: { xs: 8, md: 12 } }}>
+      {/* CS2 key art fading in behind the header */}
+      <Box
+        aria-hidden
+        sx={{
+          position: "absolute",
+          top: { xs: "-60px", md: "-72px" },
+          left: 0,
+          right: 0,
+          height: { xs: 340, md: 440 },
+          pointerEvents: "none",
+          background: `url(${arenaPc}) 85% 30% / cover no-repeat`,
+          opacity: { xs: 0.3, md: 0.45 },
+          maskImage:
+            "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.35) 35%, #000 75%), linear-gradient(180deg, #000 30%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.35) 35%, #000 75%), linear-gradient(180deg, #000 30%, transparent 100%)",
+          maskComposite: "intersect",
+          WebkitMaskComposite: "source-in",
+        }}
+      />
+      <Container maxWidth="lg" sx={{ position: "relative" }}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
