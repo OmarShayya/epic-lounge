@@ -2,6 +2,7 @@ import React from "react";
 import { Box } from "@mui/material";
 import Hero from "@components/landing/Hero";
 import Marquee from "@components/landing/Marquee";
+import Games from "@components/landing/Games";
 import Features from "@components/landing/Features";
 import Gallery from "@components/landing/Gallery";
 import About from "@components/landing/About";
@@ -12,6 +13,7 @@ const LandingPage: React.FC = () => {
     <Box>
       <Hero />
       <Marquee />
+      <Games />
       <Features />
       <Gallery />
       <About />
