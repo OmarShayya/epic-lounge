@@ -223,7 +223,7 @@ html.cursor-hover.cursor-down .cursor-ring__inner {
     flex: 1 1 0;
     min-width: 0;
   }
-  .hero-cta > * {
+  .hero-cta > .MuiButton-root {
     width: 100%;
   }
 }
