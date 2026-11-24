@@ -22,11 +22,15 @@ export const tokens = {
   red: "#FF4D6D",
   amber: "#FFB347",
   whatsapp: "#25D366",
-  // Menu page: lifted charcoal surfaces so it reads clearer than pure black
-  menuBg: "#0F1017",
-  menuCard: "#171821",
-  menuCardHover: "#1D1E28",
-  menuBorder: "rgba(255,255,255,0.075)",
+  // Menu page: brand-tinted purple → navy surfaces (clearly not black)
+  menuBg: "#1A1E36",
+  menuPageBg:
+    "radial-gradient(900px 480px at 90% -5%, rgba(155,81,224,0.45), transparent 60%), radial-gradient(800px 420px at 0% 0%, rgba(0,206,209,0.22), transparent 60%), linear-gradient(180deg, #241C42 0%, #1B2140 38%, #161C33 100%)",
+  menuCard: "#262B49",
+  menuCardHover: "#2D3354",
+  menuBorder: "rgba(255,255,255,0.11)",
+  menuText: "#B8BBD0",
+  menuTextDim: "#9095B0",
   fontDisplay: '"Orbitron", "Space Grotesk", system-ui, sans-serif',
   fontBody: '"Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif',
   headerHeight: { xs: 60, md: 72 },

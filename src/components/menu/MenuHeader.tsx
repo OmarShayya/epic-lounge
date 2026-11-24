@@ -24,7 +24,7 @@ const MenuHeader: React.FC<MenuHeaderProps> = ({ query, onQueryChange }) => (
           overflow: "hidden",
           borderRadius: "24px",
           height: { xs: 168, sm: 190, md: 230 },
-          background: "linear-gradient(120deg, #1A1B26 0%, #12131B 60%)",
+          background: "linear-gradient(120deg, #2E2558 0%, #1F2547 60%)",
           border: `1px solid ${tokens.menuBorder}`,
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
         }}
@@ -62,8 +62,8 @@ const MenuHeader: React.FC<MenuHeaderProps> = ({ query, onQueryChange }) => (
             inset: 0,
             pointerEvents: "none",
             background: {
-              xs: "linear-gradient(90deg, #14151E 0%, rgba(20,21,30,0.94) 42%, rgba(20,21,30,0.35) 72%, rgba(20,21,30,0.1) 100%)",
-              md: "linear-gradient(90deg, #14151E 0%, rgba(20,21,30,0.92) 45%, rgba(20,21,30,0.2) 75%, transparent 100%)",
+              xs: "linear-gradient(90deg, #2A2352 0%, rgba(42,35,82,0.94) 42%, rgba(42,35,82,0.35) 72%, rgba(42,35,82,0.08) 100%)",
+              md: "linear-gradient(90deg, #2A2352 0%, rgba(42,35,82,0.92) 45%, rgba(42,35,82,0.2) 75%, transparent 100%)",
             },
           }}
         />
@@ -87,7 +87,7 @@ const MenuHeader: React.FC<MenuHeaderProps> = ({ query, onQueryChange }) => (
           >
             Menu
           </Typography>
-          <Typography sx={{ color: "#B9BAC8", mt: 1, fontSize: { xs: "0.88rem", md: "1.02rem" }, lineHeight: 1.45 }}>
+          <Typography sx={{ color: "#D3D5E6", mt: 1, fontSize: { xs: "0.88rem", md: "1.02rem" }, lineHeight: 1.45 }}>
             Snacks & drinks for every session.{" "}
             <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
               Tap <b style={{ color: "#fff" }}>+</b> to add, then send your order on WhatsApp.

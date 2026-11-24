@@ -142,9 +142,7 @@ const MenuPage: React.FC = () => {
         mt: { xs: "-60px", md: "-72px" },
         pt: { xs: "60px", md: "72px" },
         minHeight: "100vh",
-        background: `radial-gradient(900px 420px at 90% 0%, rgba(155,81,224,0.16), transparent 60%),
-          radial-gradient(700px 380px at 0% 10%, rgba(0,206,209,0.10), transparent 60%),
-          ${tokens.menuBg}`,
+        background: tokens.menuPageBg,
       }}
     >
       <Container maxWidth="lg" sx={{ pt: { xs: 2.5, md: 5 }, px: { xs: 2, sm: 3 } }}>

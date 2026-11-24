@@ -45,7 +45,7 @@ const CategoryTabs = forwardRef<HTMLDivElement, CategoryTabsProps>(({ categories
         top: tokens.headerHeight,
         zIndex: 10,
         mx: { xs: -2, sm: -3 },
-        background: "rgba(15,16,23,0.9)",
+        background: "rgba(30,33,60,0.92)",
         backdropFilter: "saturate(160%) blur(14px)",
         WebkitBackdropFilter: "saturate(160%) blur(14px)",
         borderBottom: `1px solid ${tokens.menuBorder}`,

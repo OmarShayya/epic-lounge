@@ -45,7 +45,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, accent, Icon }) => {
         borderRadius: "18px",
         background: inCart ? `linear-gradient(90deg, ${alpha(tokens.cyan, 0.09)}, ${tokens.menuCard} 60%)` : tokens.menuCard,
         border: `1px solid ${inCart ? alpha(tokens.cyan, 0.5) : tokens.menuBorder}`,
-        boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.25)",
+        boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(10,8,30,0.35)",
         transition: "border-color .25s ease, background-color .25s ease, transform .25s ease",
         "&:hover": {
           background: inCart ? undefined : tokens.menuCardHover,
@@ -104,7 +104,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, accent, Icon }) => {
           <Typography
             sx={{
               mt: 0.25,
-              color: "#A9AAB8",
+              color: tokens.menuText,
               fontSize: "0.82rem",
               lineHeight: 1.4,
               display: "-webkit-box",
@@ -120,7 +120,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, accent, Icon }) => {
           <Typography sx={{ fontWeight: 700, fontSize: "1.05rem", color: accent, lineHeight: 1.3 }}>
             {formatUSD(product.pricing.usd)}
           </Typography>
-          <Typography sx={{ color: "#7C7D8C", fontSize: "0.78rem", fontWeight: 500 }}>
+          <Typography sx={{ color: tokens.menuTextDim, fontSize: "0.78rem", fontWeight: 500 }}>
             {formatLBP(product.pricing.lbp)}
           </Typography>
         </Box>

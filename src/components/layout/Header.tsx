@@ -68,7 +68,12 @@ const Header: React.FC = () => {
         elevation={0}
         sx={{
           zIndex: 1300,
-          background: scrolled || open ? "rgba(12,13,19,0.86)" : "transparent",
+          background:
+            scrolled || open
+              ? location.pathname === "/menu" && !open
+                ? "rgba(36,30,68,0.88)"
+                : "rgba(12,13,19,0.86)"
+              : "transparent",
           backdropFilter: scrolled || open ? "saturate(160%) blur(16px)" : "none",
           WebkitBackdropFilter: scrolled || open ? "saturate(160%) blur(16px)" : "none",
           borderBottom: `1px solid ${scrolled && !open ? tokens.border : "transparent"}`,

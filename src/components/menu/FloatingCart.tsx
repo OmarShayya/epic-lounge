@@ -43,7 +43,7 @@ const FloatingCart: React.FC = () => {
               zIndex: 1100,
               padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
               pointerEvents: "none",
-              background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.85) 55%)",
+              background: "linear-gradient(180deg, transparent, rgba(22,28,51,0.9) 55%)",
             }}
           >
             <motion.button
