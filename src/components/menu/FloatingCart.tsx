@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { tokens } from "@theme/theme";
 import { formatUSD } from "@utils/helpers";
+import { preloadFlags } from "@utils/flags";
 import CartDrawer from "./CartDrawer";
 
 /** Sticky "View order" bar along the bottom of the screen; bumps whenever something is added. */
@@ -17,6 +18,12 @@ const FloatingCart: React.FC = () => {
 
   const hasItems = useRef(false);
   hasItems.current = totalItems > 0;
+
+  // The order form shows a country flag: fetch the flags while they're still browsing
+  const anyItems = totalItems > 0;
+  useEffect(() => {
+    if (anyItems) preloadFlags();
+  }, [anyItems]);
 
   useEffect(() => {
     // Only animate when the bar is actually on screen (controls must be bound)

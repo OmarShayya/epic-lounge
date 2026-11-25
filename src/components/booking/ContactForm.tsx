@@ -1,24 +1,27 @@
 import React, { useState } from "react";
 import { Box, Button, Collapse, Stack, TextField } from "@mui/material";
 import { Add } from "@mui/icons-material";
+import PhoneField from "@components/common/PhoneField";
+import type { PhoneValue } from "@utils/phone";
 import { fieldSx, ui } from "./styles";
 
 export interface ContactValues {
   name: string;
-  phone: string;
+  phone: PhoneValue;
   notes: string;
   honeypot: string;
 }
 
 interface ContactFormProps {
   values: ContactValues;
-  onChange: (field: keyof ContactValues, value: string) => void;
+  onChange: <K extends keyof ContactValues>(field: K, value: ContactValues[K]) => void;
   errors: { name?: string; phone?: string };
   nameRef?: React.Ref<HTMLInputElement>;
+  phoneRef?: React.Ref<HTMLInputElement>;
   onSubmit: () => void;
 }
 
-const ContactForm: React.FC<ContactFormProps> = ({ values, onChange, errors, nameRef, onSubmit }) => {
+const ContactForm: React.FC<ContactFormProps> = ({ values, onChange, errors, nameRef, phoneRef, onSubmit }) => {
   const [showNotes, setShowNotes] = useState(!!values.notes);
   return (
     <Box
@@ -42,18 +45,16 @@ const ContactForm: React.FC<ContactFormProps> = ({ values, onChange, errors, nam
           slotProps={{ htmlInput: { maxLength: 80, enterKeyHint: "next" } }}
           sx={fieldSx}
         />
-        <TextField
+        <PhoneField
+          variant="booking"
           label="Phone (WhatsApp)"
           value={values.phone}
-          onChange={(e) => onChange("phone", e.target.value)}
+          onChange={(phone) => onChange("phone", phone)}
           required
-          type="tel"
-          autoComplete="tel"
-          placeholder="70 123 456"
-          error={!!errors.phone}
-          helperText={errors.phone ?? "Only used for this booking. You'll need it to cancel."}
-          slotProps={{ htmlInput: { inputMode: "tel", maxLength: 30, enterKeyHint: "done" } }}
-          sx={fieldSx}
+          error={errors.phone}
+          helperText="Only used for this booking. You'll need it to cancel."
+          inputRef={phoneRef}
+          enterKeyHint="done"
         />
         <Collapse in={showNotes} unmountOnExit>
           <TextField

@@ -5,6 +5,9 @@ import { tokens } from "@theme/theme";
 import { describeApiError, reservationApi } from "@/services/api";
 import type { PublicReservation } from "@/services/api";
 import { downloadIcs, loadLastBooking } from "@utils/reservation";
+import { emptyPhone } from "@utils/phone";
+import type { PhoneValue } from "@utils/phone";
+import PhoneField from "@components/common/PhoneField";
 import BookingCard from "./BookingCard";
 import { fieldSx, ui } from "./styles";
 
@@ -18,14 +21,19 @@ interface ManageBookingDialogProps {
 /** Find a booking with its code + phone number, and cancel it if plans change. */
 const ManageFlow: React.FC<Omit<ManageBookingDialogProps, "open">> = ({ initialCode, onClose, onChanged }) => {
   const [code, setCode] = useState(() => (initialCode || loadLastBooking()?.code || "").toUpperCase());
-  const [phone, setPhone] = useState(() => (!initialCode || initialCode === loadLastBooking()?.code ? (loadLastBooking()?.phone ?? "") : ""));
+  const [phone, setPhone] = useState<PhoneValue>(() => {
+    const last = loadLastBooking();
+    // The saved number only belongs to the saved code
+    return last && (!initialCode || initialCode.toUpperCase() === last.code.toUpperCase()) ? last.phone : emptyPhone();
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reservation, setReservation] = useState<PublicReservation | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const canSearch = code.trim().length >= 4 && phone.replace(/\D/g, "").length >= 7;
+  // Old bookings may hold numbers the formatter doesn't know, so 7+ digits is enough to try
+  const canSearch = code.trim().length >= 4 && phone.input.replace(/\D/g, "").length >= 7;
   const cancellable = reservation?.status === "confirmed" && new Date(reservation.startTime).getTime() > Date.now();
 
   const lookup = async (e?: React.FormEvent) => {
@@ -34,7 +42,7 @@ const ManageFlow: React.FC<Omit<ManageBookingDialogProps, "open">> = ({ initialC
     setLoading(true);
     setError(null);
     try {
-      setReservation(await reservationApi.lookup(code.trim(), phone.trim()));
+      setReservation(await reservationApi.lookup(code.trim(), phone.e164));
     } catch (err) {
       setReservation(null);
       setError(describeApiError(err).message);
@@ -48,7 +56,7 @@ const ManageFlow: React.FC<Omit<ManageBookingDialogProps, "open">> = ({ initialC
     setCancelling(true);
     setError(null);
     try {
-      setReservation(await reservationApi.cancel(reservation.code, phone.trim()));
+      setReservation(await reservationApi.cancel(reservation.code, phone.e164));
       setConfirming(false);
       onChanged?.();
     } catch (err) {
@@ -81,15 +89,7 @@ const ManageFlow: React.FC<Omit<ManageBookingDialogProps, "open">> = ({ initialC
               slotProps={{ htmlInput: { maxLength: 10, style: { letterSpacing: "0.15em", fontWeight: 700 } } }}
               sx={fieldSx}
             />
-            <TextField
-              label="Phone number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              type="tel"
-              autoComplete="tel"
-              slotProps={{ htmlInput: { inputMode: "tel", maxLength: 30 } }}
-              sx={fieldSx}
-            />
+            <PhoneField variant="booking" label="Phone number" value={phone} onChange={setPhone} enterKeyHint="go" />
             {error && (
               <Box role="alert" sx={{ px: 1.75, py: 1.25, borderRadius: "12px", background: alpha(tokens.red, 0.1), border: `1px solid ${alpha(tokens.red, 0.35)}`, fontSize: "0.9rem" }}>
                 {error}

@@ -90,7 +90,7 @@ const MenuHeader: React.FC<MenuHeaderProps> = ({ query, onQueryChange }) => (
           <Typography sx={{ color: "#D3D5E6", mt: 1, fontSize: { xs: "0.88rem", md: "1.02rem" }, lineHeight: 1.45 }}>
             Snacks & drinks for every session.{" "}
             <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              Tap <b style={{ color: "#fff" }}>+</b> to add, then send your order on WhatsApp.
+              Tap <b style={{ color: "#fff" }}>+</b> to add, then send your order straight to the counter.
             </Box>
           </Typography>
         </Stack>

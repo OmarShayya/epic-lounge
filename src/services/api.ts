@@ -105,7 +105,10 @@ export interface CreateReservationPayload {
   stationIds?: string[];
   stationCount?: number;
   customerName: string;
+  /** E.164, e.g. "+96170123456". */
   customerPhone: string;
+  /** ISO-3166 alpha-2 of the number, e.g. "LB". */
+  phoneCountry?: string;
   notes?: string;
   /** Honeypot — must stay empty. */
   website?: string;
@@ -165,6 +168,43 @@ export const reservationApi = {
   },
 };
 
+/* ------------------------------------------------------------------ */
+/* Menu orders                                                         */
+/* ------------------------------------------------------------------ */
+
+export interface Money {
+  usd: number;
+  lbp: number;
+}
+
+export interface PlaceOrderPayload {
+  /** Backend product ids (`Product.id` from /products/menu). Prices are taken from the server. */
+  items: { productId: string; quantity: number }[];
+  customerName: string;
+  /** E.164, e.g. "+96170123456". */
+  customerPhone: string;
+  /** ISO-3166 alpha-2 of the number, e.g. "LB". */
+  phoneCountry?: string;
+  notes?: string;
+  /** Honeypot — must stay empty. */
+  website?: string;
+}
+
+export interface PlacedOrderItem {
+  productId?: string;
+  productName: string;
+  quantity: number;
+  unitPrice?: Money;
+  subtotal?: Money;
+  finalAmount?: Money;
+}
+
+export interface PlacedOrder {
+  invoiceNumber: string;
+  totals: Money;
+  items: PlacedOrderItem[];
+}
+
 export const menuApi = {
   // Get all menu products (public endpoint)
   getMenuProducts: async (): Promise<Product[]> => {
@@ -175,6 +215,12 @@ export const menuApi = {
   // Get exchange rate
   getExchangeRate: async (): Promise<{ rate: number; lastUpdated: string }> => {
     const response = await api.get("/exchange-rate/current");
+    return response.data.data;
+  },
+
+  // Send a menu order to the counter (shows up in the POS as a pending website order)
+  placeOrder: async (payload: PlaceOrderPayload): Promise<PlacedOrder> => {
+    const response = await api.post("/sales/public", payload);
     return response.data.data;
   },
 

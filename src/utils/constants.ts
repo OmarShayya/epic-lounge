@@ -4,6 +4,9 @@ export const CONTACT_INFO = {
   address: "Sawfar, badghan, main road, near 'habibi cut'",
 };
 
+/** Chat with the lounge on WhatsApp (append `?text=` to prefill a message). */
+export const LOUNGE_WHATSAPP = `https://wa.me/${CONTACT_INFO.phone.replace(/\D/g, "")}`;
+
 export const SOCIAL_LINKS = {
   facebook: "#",
   instagram: "#",

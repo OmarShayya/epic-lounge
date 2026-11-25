@@ -17,12 +17,13 @@ import type { TransitionProps } from "@mui/material/transitions";
 import { ArrowBack, ArrowForward, Close, Computer, EditOutlined, ErrorOutline, Phone, Refresh, SportsEsports, WhatsApp } from "@mui/icons-material";
 import { AnimatePresence, motion } from "framer-motion";
 import { tokens } from "@theme/theme";
-import { CONTACT_INFO } from "@utils/constants";
+import { CONTACT_INFO, LOUNGE_WHATSAPP } from "@utils/constants";
 import { describeApiError, reservationApi } from "@/services/api";
 import type { AvailabilitySlot, PCStatus, PublicReservation, ReservationConfig, StationType } from "@/services/api";
 import { useAvailability } from "@hooks/useReservation";
+import { phoneError as phoneErrorOf } from "@utils/phone";
+import { preloadFlags } from "@utils/flags";
 import {
-  LOUNGE_WHATSAPP,
   TYPE_LABEL,
   buildDateOptions,
   buildDurationOptions,
@@ -58,8 +59,6 @@ export interface BookingDialogProps {
 const SlideUp = React.forwardRef(function SlideUp(props: TransitionProps & { children: React.ReactElement }, ref: React.Ref<unknown>) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
-
-const phoneDigits = (p: string) => p.replace(/\D/g, "");
 
 /* ------------------------------------------------------------------ */
 /* Small pieces                                                        */
@@ -116,17 +115,18 @@ const BookingFlow: React.FC<Omit<BookingDialogProps, "open">> = ({
   const [duration, setDuration] = useState(120);
   const [slotStart, setSlotStart] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [form, setForm] = useState<ContactValues>(() => {
-    const saved = loadContact();
-    return { name: saved?.name ?? "", phone: saved?.phone ?? "", notes: "", honeypot: "" };
-  });
+  const [form, setForm] = useState<ContactValues>(() => ({ ...loadContact(), notes: "", honeypot: "" }));
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<{ status: number; message: string } | null>(null);
   const [result, setResult] = useState<PublicReservation | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
   const stationRowRef = useRef<HTMLDivElement>(null);
+
+  // The details step shows a country flag: fetch the flags while the time is being picked
+  useEffect(preloadFlags, []);
 
   // Keep the chosen station chip in view (e.g. PC 09 tapped on the map)
   useEffect(() => {
@@ -256,7 +256,7 @@ const BookingFlow: React.FC<Omit<BookingDialogProps, "open">> = ({
   }, [config]);
 
   const nameError = form.name.trim().length < 2 ? "Please enter your name" : undefined;
-  const phoneError = phoneDigits(form.phone).length < 7 ? "Please enter a valid phone number" : undefined;
+  const phoneError = phoneErrorOf(form.phone);
 
   const goTo = (next: Step) => {
     setStep(next);
@@ -267,7 +267,7 @@ const BookingFlow: React.FC<Omit<BookingDialogProps, "open">> = ({
     if (!slot) return goTo("time");
     if (nameError || phoneError) {
       setShowErrors(true);
-      (nameError ? nameRef.current : null)?.focus();
+      (nameError ? nameRef : phoneRef).current?.focus();
       return;
     }
     setSubmitting(true);
@@ -279,12 +279,13 @@ const BookingFlow: React.FC<Omit<BookingDialogProps, "open">> = ({
         durationMinutes: duration,
         ...(main ? { stationIds: chosenIds } : { stationCount: count }),
         customerName: form.name.trim(),
-        customerPhone: form.phone.trim(),
+        customerPhone: form.phone.e164,
+        phoneCountry: form.phone.country,
         notes: form.notes.trim() || undefined,
         website: form.honeypot,
       });
-      saveContact(form.name.trim(), form.phone.trim());
-      saveLastBooking(res.code, form.phone.trim());
+      saveContact(form.name.trim(), form.phone);
+      saveLastBooking(res.code, form.phone);
       setResult(res);
       goTo("done");
       onBooked?.(res);
@@ -581,6 +582,7 @@ const BookingFlow: React.FC<Omit<BookingDialogProps, "open">> = ({
           onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
           errors={showErrors ? { name: nameError, phone: phoneError } : {}}
           nameRef={nameRef}
+          phoneRef={phoneRef}
           onSubmit={submit}
         />
       </Box>
