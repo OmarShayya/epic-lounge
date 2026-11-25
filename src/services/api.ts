@@ -105,7 +105,10 @@ export interface CreateReservationPayload {
   stationIds?: string[];
   stationCount?: number;
   customerName: string;
+  /** E.164, e.g. "+96170123456". */
   customerPhone: string;
+  /** ISO-3166 alpha-2 of the number, e.g. "LB". */
+  phoneCountry?: string;
   notes?: string;
   /** Honeypot — must stay empty. */
   website?: string;

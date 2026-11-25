@@ -1,5 +1,7 @@
 import type { AvailabilityStation, DaySchedule, PublicReservation, ReservationConfig, StationType } from "@/services/api";
 import { CONTACT_INFO } from "@utils/constants";
+import { phoneFromStored } from "@utils/phone";
+import type { PhoneValue } from "@utils/phone";
 
 export const TYPE_LABEL: Record<StationType, { one: string; many: string; unit: string }> = {
   pc: { one: "Gaming PC", many: "Gaming PCs", unit: "PC" },
@@ -157,8 +159,6 @@ export const whatsappShareUrl = (r: PublicReservation) => {
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 };
 
-export const LOUNGE_WHATSAPP = `https://wa.me/${CONTACT_INFO.phone.replace(/\D/g, "")}`;
-
 /* ---------------------------------------------------------------- helpers for the booking window */
 
 /** Picks `n` extra free stations, closest by number to the main one (so friends sit together). */
@@ -193,7 +193,23 @@ const writeJson = (key: string, value: unknown) => {
   }
 };
 
-export const loadContact = () => readJson<{ name: string; phone: string }>(CONTACT_KEY);
-export const saveContact = (name: string, phone: string) => writeJson(CONTACT_KEY, { name, phone });
-export const loadLastBooking = () => readJson<{ code: string; phone: string }>(LAST_KEY);
-export const saveLastBooking = (code: string, phone: string) => writeJson(LAST_KEY, { code, phone });
+/** Saved as E.164 + country. Older saves hold the phone as it was typed ("70 123 456") and no country. */
+interface SavedPhone {
+  phone?: unknown;
+  phoneCountry?: unknown;
+}
+const readPhone = (saved: SavedPhone | null): PhoneValue =>
+  phoneFromStored(typeof saved?.phone === "string" ? saved.phone : "", typeof saved?.phoneCountry === "string" ? saved.phoneCountry : null);
+
+/** The name + phone this device used last (shared by bookings and menu orders). */
+export const loadContact = (): { name: string; phone: PhoneValue } => {
+  const saved = readJson<SavedPhone & { name?: unknown }>(CONTACT_KEY);
+  return { name: typeof saved?.name === "string" ? saved.name : "", phone: readPhone(saved) };
+};
+export const saveContact = (name: string, phone: PhoneValue) => writeJson(CONTACT_KEY, { name, phone: phone.e164, phoneCountry: phone.country });
+
+export const loadLastBooking = (): { code: string; phone: PhoneValue } | null => {
+  const saved = readJson<SavedPhone & { code?: unknown }>(LAST_KEY);
+  return saved && typeof saved.code === "string" ? { code: saved.code, phone: readPhone(saved) } : null;
+};
+export const saveLastBooking = (code: string, phone: PhoneValue) => writeJson(LAST_KEY, { code, phone: phone.e164, phoneCountry: phone.country });
