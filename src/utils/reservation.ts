@@ -158,3 +158,42 @@ export const whatsappShareUrl = (r: PublicReservation) => {
 };
 
 export const LOUNGE_WHATSAPP = `https://wa.me/${CONTACT_INFO.phone.replace(/\D/g, "")}`;
+
+/* ---------------------------------------------------------------- helpers for the booking window */
+
+/** Picks `n` extra free stations, closest by number to the main one (so friends sit together). */
+export const nearestStations = (mainId: string, freeIds: string[], stations: AvailabilityStation[], n: number): string[] => {
+  if (n <= 0) return [];
+  const num = (s?: AvailabilityStation) => parseInt(s?.pcNumber.match(/\d+/)?.[0] ?? "0", 10);
+  const byId = new Map(stations.map((s) => [s.id, s]));
+  const mainNum = num(byId.get(mainId));
+  return freeIds
+    .filter((id) => id !== mainId && byId.has(id))
+    .sort((a, b) => Math.abs(num(byId.get(a)) - mainNum) - Math.abs(num(byId.get(b)) - mainNum) || num(byId.get(a)) - num(byId.get(b)))
+    .slice(0, n);
+};
+
+/* Small per-device conveniences. Storage can be blocked (private mode), so every access is guarded. */
+const CONTACT_KEY = "epic-booking-contact";
+const LAST_KEY = "epic-last-booking";
+
+const readJson = <T,>(key: string): T | null => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+};
+const writeJson = (key: string, value: unknown) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable */
+  }
+};
+
+export const loadContact = () => readJson<{ name: string; phone: string }>(CONTACT_KEY);
+export const saveContact = (name: string, phone: string) => writeJson(CONTACT_KEY, { name, phone });
+export const loadLastBooking = () => readJson<{ code: string; phone: string }>(LAST_KEY);
+export const saveLastBooking = (code: string, phone: string) => writeJson(LAST_KEY, { code, phone });

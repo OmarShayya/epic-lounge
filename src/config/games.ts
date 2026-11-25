@@ -56,8 +56,7 @@ export const ARENAS: Arena[] = [
     image: arenaPc,
     imagePosition: "78% center",
     accent: "#FF9F1C",
-    cta: { kind: "link", label: "Book a PC", to: "/reserve?type=pc" },
-    secondary: { kind: "link", label: "See free PCs", to: "/gaming" },
+    cta: { kind: "link", label: "Book a PC", to: "/gaming" },
   },
   {
     id: "ps5",
@@ -68,7 +67,7 @@ export const ARENAS: Arena[] = [
     image: arenaPs5,
     imagePosition: "40% 30%",
     accent: "#00CED1",
-    cta: { kind: "link", label: "Book a PS5 room", to: "/reserve?type=playstation" },
+    cta: { kind: "link", label: "Book a PS5 room", to: "/gaming?type=playstation" },
     secondary: { kind: "call", label: "Call us" },
   },
 ];

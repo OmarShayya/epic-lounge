@@ -3,9 +3,12 @@ import { Box, Typography, alpha } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
 import { ThreeSixty, TouchApp } from "@mui/icons-material";
 import { PC_LAYOUT } from "@/config/pcLayout";
-import type { PCStatus } from "@/services/api";
+import type { PCStatus, StationType } from "@/services/api";
 import { tokens } from "@theme/theme";
-import { STATUS_META, normalizePcNumber, reservationBadge, shortPcLabel, statusColor } from "./statusMeta";
+import { Cuboid } from "./Cuboid";
+import PSRoom3D from "./PSRoom3D";
+import { ROOM } from "./sceneSizes";
+import { STATUS_META, normalizePcNumber, reservationBadge, shortPcLabel, stationLabel, statusColor } from "./statusMeta";
 
 /* ------------------------------------------------------------------ */
 /* Scene constants (logical px, the whole scene is scaled to fit)      */
@@ -21,87 +24,6 @@ const MAX_ORBIT = 50; // how far the user can drag around
 const DESK = { w: 84, d: 52, h: 20 };
 const MONITOR = { w: 62, d: 5, h: 36, y: 8, lift: 6 };
 const CHAIR = { w: 30, d: 24, h: 14, gap: 8 };
-
-/* ------------------------------------------------------------------ */
-/* A box built from five faces (no bottom), in its parent's 3D space.   */
-/* ------------------------------------------------------------------ */
-
-interface CuboidProps {
-  x: number;
-  y: number;
-  z?: number;
-  w: number;
-  d: number;
-  h: number;
-  top: string;
-  front: string;
-  side: string;
-  back?: string;
-  topStyle?: React.CSSProperties;
-  frontStyle?: React.CSSProperties;
-  children?: React.ReactNode;
-}
-
-const face: React.CSSProperties = { position: "absolute", backfaceVisibility: "visible" };
-
-const Cuboid: React.FC<CuboidProps> = ({
-  x,
-  y,
-  z = 0,
-  w,
-  d,
-  h,
-  top,
-  front,
-  side,
-  back = side,
-  topStyle,
-  frontStyle,
-  children,
-}) => (
-  <div
-    style={{
-      position: "absolute",
-      left: x,
-      top: y,
-      width: w,
-      height: d,
-      transformStyle: "preserve-3d",
-      transform: `translateZ(${z}px)`,
-    }}
-  >
-    {/* back */}
-    <div
-      style={{ ...face, left: 0, top: 0, width: w, height: h, background: back, transformOrigin: "top", transform: "rotateX(90deg)" }}
-    />
-    {/* left */}
-    <div
-      style={{ ...face, left: 0, top: 0, width: h, height: d, background: side, transformOrigin: "left", transform: "rotateY(-90deg)" }}
-    />
-    {/* right */}
-    <div
-      style={{ ...face, left: w - h, top: 0, width: h, height: d, background: side, transformOrigin: "right", transform: "rotateY(90deg)" }}
-    />
-    {/* front */}
-    <div
-      style={{
-        ...face,
-        left: 0,
-        top: d - h,
-        width: w,
-        height: h,
-        background: front,
-        transformOrigin: "bottom",
-        transform: "rotateX(-90deg)",
-        ...frontStyle,
-      }}
-    />
-    {/* top */}
-    <div style={{ ...face, left: 0, top: 0, width: w, height: d, background: top, transform: `translateZ(${h}px)`, ...topStyle }}>
-      {children}
-    </div>
-  </div>
-);
 
 /* ------------------------------------------------------------------ */
 /* One gaming station: desk + monitor + chair + glow + floating label   */
@@ -340,11 +262,34 @@ Station.displayName = "Station";
 
 interface PCGrid3DProps {
   pcs: PCStatus[];
+  /** "pc" draws the PC floor; "playstation" draws the private PS5 rooms. */
+  variant?: StationType;
   selectedId: string | null;
+  /** Called with the tapped station (opens booking), or null when the empty floor is tapped. */
   onSelect: (pcNumber: string | null) => void;
 }
 
-const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
+/** Lays PS5 rooms out in one row (up to 3) or two rows, and scales them to fit the floor. */
+const placeRooms = (rooms: PCStatus[]) => {
+  const n = rooms.length;
+  const rows = n <= 3 ? 1 : 2;
+  const cols = Math.max(1, Math.ceil(n / rows));
+  const scale = Math.min(1.35, (FLOOR_W / cols - 36) / ROOM.w, (FLOOR_H / rows - 44) / ROOM.d);
+  return rooms.map((pc, i) => {
+    const row = Math.floor(i / cols);
+    const inRow = Math.min(cols, n - row * cols);
+    return {
+      pc,
+      x: (((i % cols) + 0.5) / inRow) * 100,
+      y: rows === 1 ? 50 : row === 0 ? 27 : 74,
+      rotation: 0,
+      scale,
+    };
+  });
+};
+
+const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, variant = "pc", selectedId, onSelect }) => {
+  const isRooms = variant === "playstation";
   const containerRef = useRef<HTMLDivElement>(null);
   const floorRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.8);
@@ -359,6 +304,7 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
 
   /* Place PCs: configured layout first, then any unknown PCs in middle rows */
   const placed = useMemo(() => {
+    if (isRooms) return placeRooms(pcs);
     const byKey = new Map(pcs.map((pc) => [normalizePcNumber(pc.pcNumber), pc]));
     const used = new Set<string>();
     const items: { pc: PCStatus; x: number; y: number; rotation: number }[] = [];
@@ -384,8 +330,8 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
         rotation: 0,
       });
     });
-    return items;
-  }, [pcs]);
+    return items.map((item) => ({ ...item, scale: 1 }));
+  }, [pcs, isRooms]);
 
   /* Fit the scene to the container */
   useEffect(() => {
@@ -483,10 +429,7 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
   };
 
   const wasDragging = React.useCallback(() => justDragged.current, []);
-  const handleSelect = React.useCallback(
-    (id: string) => onSelect(id === selectedId ? null : id),
-    [onSelect, selectedId]
-  );
+  const handleSelect = React.useCallback((id: string) => onSelect(id), [onSelect]);
   const handleHover = React.useCallback((id: string | null) => setHoveredId(id), []);
 
   const activeId = hoveredId ?? selectedId;
@@ -611,49 +554,67 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
           />
 
           {/* Floor markings */}
-          <div
-            style={{
-              position: "absolute",
-              left: "8%",
-              right: "8%",
-              top: "50%",
-              height: 0,
-              borderTop: `2px dashed ${alpha(tokens.cyan, 0.18)}`,
-            }}
-          />
+          {!isRooms && (
+            <div
+              style={{
+                position: "absolute",
+                left: "8%",
+                right: "8%",
+                top: "50%",
+                height: 0,
+                borderTop: `2px dashed ${alpha(tokens.cyan, 0.18)}`,
+              }}
+            />
+          )}
           <div
             style={{
               position: "absolute",
               inset: 0,
               display: "flex",
-              alignItems: "center",
+              alignItems: isRooms ? "flex-end" : "center",
               justifyContent: "center",
+              paddingBottom: isRooms ? 14 : 0,
               fontFamily: tokens.fontDisplay,
               fontWeight: 900,
-              fontSize: 64,
+              fontSize: isRooms ? 34 : 64,
               letterSpacing: "0.18em",
-              color: "rgba(255,255,255,0.045)",
+              color: isRooms ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.045)",
               pointerEvents: "none",
               transform: "translateY(-2px)",
             }}
           >
-            EPIC LOUNGE
+            {isRooms ? "PS5 ROOMS" : "EPIC LOUNGE"}
           </div>
 
-          {placed.map(({ pc, x, y, rotation }) => (
-            <Station
-              key={pc.pcNumber}
-              pc={pc}
-              x={x}
-              y={y}
-              rotation={rotation}
-              active={pc.pcNumber === activeId}
-              labelScale={labelScale}
-              onSelect={handleSelect}
-              onHover={handleHover}
-              wasDragging={wasDragging}
-            />
-          ))}
+          {placed.map(({ pc, x, y, rotation, scale: roomScale }) =>
+            isRooms ? (
+              <PSRoom3D
+                key={pc.pcNumber}
+                pc={pc}
+                x={x}
+                y={y}
+                scale={roomScale}
+                active={pc.pcNumber === activeId}
+                labelScale={labelScale}
+                onSelect={handleSelect}
+                onHover={handleHover}
+                wasDragging={wasDragging}
+              />
+            ) : (
+              <Station
+                key={pc.pcNumber}
+                pc={pc}
+                x={x}
+                y={y}
+                rotation={rotation}
+                active={pc.pcNumber === activeId}
+                labelScale={labelScale}
+                onSelect={handleSelect}
+                onHover={handleHover}
+                wasDragging={wasDragging}
+              />
+            )
+          )}
         </div>
       </div>
 
@@ -770,7 +731,7 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
                     boxShadow: `0 0 20px ${alpha(statusColor(activePc.status), 0.5)}`,
                   }}
                 >
-                  {shortPcLabel(activePc.pcNumber)}
+                  {stationLabel(activePc)}
                 </Box>
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography
@@ -797,6 +758,9 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
                       {reservationBadge(activePc)}
                     </Typography>
                   )}
+                  <Typography sx={{ fontSize: "0.76rem", color: tokens.cyan, fontWeight: 700, lineHeight: 1.5 }}>
+                    {activePc.status === "maintenance" ? "Not bookable right now" : "Click to book a time →"}
+                  </Typography>
                 </Box>
               </Box>
             </motion.div>
@@ -826,10 +790,10 @@ const PCGrid3D: React.FC<PCGrid3DProps> = ({ pcs, selectedId, onSelect }) => {
               >
                 <TouchApp sx={{ fontSize: 16 }} />
                 <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                  Tap a station · swipe to rotate
+                  Tap a {isRooms ? "room" : "PC"} to book · swipe to rotate
                 </Box>
                 <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                  Hover or click a station for details
+                  Click any {isRooms ? "room" : "PC"} to book it
                 </Box>
               </Box>
             </motion.div>

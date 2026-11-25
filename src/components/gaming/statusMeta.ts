@@ -42,6 +42,13 @@ export const normalizePcNumber = (value: string): string => {
   return match ? String(parseInt(match[0], 10)) : value.trim().toUpperCase();
 };
 
+/** Map label: "PC-005" -> "05", PlayStation "PS-1" -> "PS 1". */
+export const stationLabel = (pc: Pick<PCStatus, "pcNumber" | "type">): string => {
+  if (pc.type !== "playstation") return shortPcLabel(pc.pcNumber);
+  const match = pc.pcNumber.match(/\d+/);
+  return match ? `PS ${parseInt(match[0], 10)}` : pc.pcNumber;
+};
+
 /** Short label for the 3D map: "PC-005" -> "05". */
 export const shortPcLabel = (value: string): string => {
   const match = value.match(/\d+/);

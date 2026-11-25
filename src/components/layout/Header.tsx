@@ -9,11 +9,10 @@ import { CONTACT_INFO } from "@utils/constants";
 const NAV = [
   { label: "Home", path: "/" },
   { label: "Menu", path: "/menu" },
-  { label: "Live PCs", path: "/gaming" },
+  { label: "Live & booking", path: "/gaming" },
 ];
 
-/** Mobile menu also lists booking (on desktop it's the standalone primary button). */
-const MOBILE_NAV = [...NAV, { label: "Reserve", path: "/reserve" }];
+const MOBILE_NAV = NAV;
 
 const WHATSAPP_URL = `https://wa.me/${CONTACT_INFO.phone.replace(/\D/g, "")}`;
 
@@ -64,8 +63,8 @@ const Header: React.FC = () => {
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const onBookingPage = location.pathname.startsWith("/reserve");
-  const tinted = /^\/(menu|reserve)/.test(location.pathname);
+  const onBookingPage = location.pathname.startsWith("/gaming");
+  const tinted = location.pathname.startsWith("/menu");
 
   return (
     <>
@@ -178,20 +177,20 @@ const Header: React.FC = () => {
               </Button>
               <Button
                 component={RouterLink}
-                to="/reserve"
+                to="/gaming"
                 variant="contained"
                 size="small"
                 startIcon={<EventAvailable sx={{ fontSize: 17 }} />}
                 sx={{ fontWeight: 700, boxShadow: onBookingPage ? `0 0 0 4px rgba(0,206,209,0.2)` : "none" }}
               >
-                Reserve
+                Book
               </Button>
             </Stack>
 
             {/* Mobile: quick "Book" pill next to the menu button */}
             <Button
               component={RouterLink}
-              to="/reserve"
+              to="/gaming"
               variant="contained"
               size="small"
               startIcon={<EventAvailable sx={{ fontSize: 16 }} />}
@@ -301,7 +300,7 @@ const Header: React.FC = () => {
                 <Button
                   fullWidth
                   component={RouterLink}
-                  to="/reserve"
+                  to="/gaming"
                   onClick={() => setOpen(false)}
                   variant="contained"
                   size="large"
