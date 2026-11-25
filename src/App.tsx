@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useSearchParams } from "react-router-dom";
 import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { theme } from "@theme/theme";
@@ -11,9 +11,17 @@ import Footer from "@components/layout/Footer";
 import LandingPage from "@pages/LandingPage";
 import MenuPage from "@pages/MenuPage";
 import PCStatusPage from "@pages/PCStatusPage";
-import ReservePage from "@pages/ReservePage";
-import ManageBookingPage from "@pages/ManageBookingPage";
 import "@assets/styles/global.css";
+
+/** Old booking links now open booking on the live page. */
+const ReserveRedirect: React.FC<{ manage?: boolean }> = ({ manage }) => {
+  const [params] = useSearchParams();
+  const next = new URLSearchParams();
+  if (params.get("type") === "playstation") next.set("type", "playstation");
+  if (manage) next.set("manage", params.get("code") || "1");
+  const qs = next.toString();
+  return <Navigate to={`/gaming${qs ? `?${qs}` : ""}`} replace />;
+};
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -38,8 +46,8 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<LandingPage />} />
               <Route path="/menu" element={<MenuPage />} />
               <Route path="/gaming" element={<PCStatusPage />} />
-              <Route path="/reserve" element={<ReservePage />} />
-              <Route path="/reserve/manage" element={<ManageBookingPage />} />
+              <Route path="/reserve" element={<ReserveRedirect />} />
+              <Route path="/reserve/manage" element={<ReserveRedirect manage />} />
             </Routes>
           </motion.div>
         </AnimatePresence>

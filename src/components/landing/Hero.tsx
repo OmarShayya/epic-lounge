@@ -218,7 +218,7 @@ const Hero: React.FC = () => {
               <Magnetic className="hero-cta">
                 <Button
                   component={RouterLink}
-                  to="/reserve"
+                  to="/gaming"
                   variant="contained"
                   size="large"
                   startIcon={<EventAvailable />}

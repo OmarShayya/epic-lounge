@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Container, IconButton, Tooltip, Typography, alpha } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
-import { ErrorOutline, EventAvailable, Refresh, EventBusy } from "@mui/icons-material";
-import { Link as RouterLink } from "react-router-dom";
+import { Computer, ErrorOutline, EventAvailable, EventBusy, ManageSearch, Refresh, SportsEsports, TouchApp } from "@mui/icons-material";
+import { useSearchParams } from "react-router-dom";
 import PCGrid3D from "@/components/gaming/PCGrid3D";
 import { STATUS_META, isPlayStation, reservationBadge, sortPcs, statusColor } from "@/components/gaming/statusMeta";
+import BookingDialog from "@/components/booking/BookingDialog";
+import ManageBookingDialog from "@/components/booking/ManageBookingDialog";
+import { useReservationConfig } from "@hooks/useReservation";
 import { menuApi } from "../services/api";
 import type { PCStats, PCStatus, StationType } from "../services/api";
 import { tokens } from "@theme/theme";
@@ -199,6 +202,14 @@ const StatCard: React.FC<{ label: string; value: number; total: number; color: s
   </Box>
 );
 
+const BookHint: React.FC<{ pc: PCStatus }> = ({ pc }) =>
+  pc.status === "maintenance" ? null : (
+    <Box component="span" className="book-hint" sx={{ display: "inline-flex", alignItems: "center", gap: 0.4, color: tokens.cyan, fontSize: "0.74rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+      <EventAvailable sx={{ fontSize: 14 }} />
+      Book
+    </Box>
+  );
+
 const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => void }> = ({ pc, selected, onClick }) => {
   const color = statusColor(pc.status);
   return (
@@ -206,7 +217,7 @@ const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => vo
       component="button"
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
+      aria-label={`${pc.name}, ${STATUS_META[pc.status]?.label ?? pc.status}. ${pc.status === "maintenance" ? "Not bookable right now" : "Book a time"}`}
       sx={{
         all: "unset",
         boxSizing: "border-box",
@@ -253,9 +264,12 @@ const StationCard: React.FC<{ pc: PCStatus; selected: boolean; onClick: () => vo
       <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color, letterSpacing: "0.04em" }}>
         {STATUS_META[pc.status]?.label ?? pc.status}
       </Typography>
-      <Typography sx={{ fontSize: "0.78rem", color: tokens.textDim, minHeight: "1.2em" }}>
-        {pc.location || " "}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+        <Typography sx={{ fontSize: "0.78rem", color: tokens.textDim, minHeight: "1.2em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {pc.location || " "}
+        </Typography>
+        <BookHint pc={pc} />
+      </Box>
       <ReservedBadge pc={pc} />
     </Box>
   );
@@ -292,11 +306,23 @@ const ReservedBadge: React.FC<{ pc: PCStatus }> = ({ pc }) => {
 };
 
 /** Bigger card for a private PlayStation room. */
-const RoomCard: React.FC<{ pc: PCStatus }> = ({ pc }) => {
+const RoomCard: React.FC<{ pc: PCStatus; onClick: () => void }> = ({ pc, onClick }) => {
   const color = statusColor(pc.status);
   return (
     <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      aria-label={`${pc.name}, ${STATUS_META[pc.status]?.label ?? pc.status}. ${pc.status === "maintenance" ? "Not bookable right now" : "Book a time"}`}
       sx={{
+        all: "unset",
+        boxSizing: "border-box",
+        cursor: "pointer",
+        textAlign: "left",
+        transition: "transform .2s ease, border-color .2s ease",
+        "&:hover": { borderColor: alpha(color, 0.8), transform: "translateY(-2px)" },
+        "&:active": { transform: "scale(0.98)" },
+        "&:focus-visible": { outline: `2px solid ${tokens.cyan}`, outlineOffset: 2 },
         position: "relative",
         overflow: "hidden",
         borderRadius: 4,
@@ -342,12 +368,100 @@ const RoomCard: React.FC<{ pc: PCStatus }> = ({ pc }) => {
         <Typography sx={{ fontFamily: tokens.fontDisplay, fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.3rem" }, mt: 0.75 }}>
           {pc.name}
         </Typography>
-        <Typography sx={{ color: tokens.textMuted, fontSize: "0.82rem" }}>
-          {pc.pcNumber}
-          {pc.location ? ` · ${pc.location}` : ""}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+          <Typography sx={{ color: tokens.textMuted, fontSize: "0.82rem" }}>
+            {pc.pcNumber}
+            {pc.location ? ` · ${pc.location}` : ""}
+          </Typography>
+          <BookHint pc={pc} />
+        </Box>
         <ReservedBadge pc={pc} />
       </Box>
+    </Box>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* PCs / PS5 rooms switch                                              */
+/* ------------------------------------------------------------------ */
+
+const TypeSwitch: React.FC<{
+  value: StationType;
+  onChange: (t: StationType) => void;
+  counts: Record<StationType, { free: number; total: number }>;
+}> = ({ value, onChange, counts }) => {
+  const options: { type: StationType; label: string; icon: React.ReactNode; accent: string }[] = [
+    { type: "pc", label: "Gaming PCs", icon: <Computer />, accent: tokens.cyan },
+    { type: "playstation", label: "PS5 rooms", icon: <SportsEsports />, accent: tokens.purpleBright },
+  ];
+  return (
+    <Box
+      role="tablist"
+      aria-label="Station type"
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 0.75,
+        p: 0.75,
+        mb: { xs: 2, md: 2.5 },
+        width: { xs: "100%", sm: 460 },
+        borderRadius: "18px",
+        background: tokens.surface,
+        border: `1px solid ${tokens.border}`,
+      }}
+    >
+      {options.map((o) => {
+        const selected = o.type === value;
+        const c = counts[o.type];
+        return (
+          <Box
+            key={o.type}
+            component="button"
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(o.type)}
+            sx={{
+              all: "unset",
+              position: "relative",
+              boxSizing: "border-box",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.25,
+              px: { xs: 1.25, sm: 1.75 },
+              py: 1.1,
+              borderRadius: "13px",
+              color: selected ? tokens.text : tokens.textMuted,
+              transition: "color .2s ease",
+              "&:hover": { color: tokens.text },
+              "&:focus-visible": { outline: `2px solid ${tokens.cyan}`, outlineOffset: 2 },
+            }}
+          >
+            {selected && (
+              <motion.span
+                layoutId="type-switch-pill"
+                transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: 13,
+                  background: alpha(o.accent, 0.14),
+                  border: `1px solid ${alpha(o.accent, 0.55)}`,
+                  boxShadow: `0 0 24px ${alpha(o.accent, 0.18)}`,
+                }}
+              />
+            )}
+            <Box sx={{ position: "relative", display: "grid", placeItems: "center", color: selected ? o.accent : "inherit" }}>{o.icon}</Box>
+            <Box sx={{ position: "relative", minWidth: 0, textAlign: "left" }}>
+              <Box sx={{ fontWeight: 700, fontSize: { xs: "0.9rem", sm: "0.98rem" }, lineHeight: 1.2, whiteSpace: "nowrap" }}>{o.label}</Box>
+              <Box sx={{ fontSize: "0.76rem", color: c.free ? tokens.green : tokens.textDim, fontWeight: 600, whiteSpace: "nowrap" }}>
+                {c.free} of {c.total} free now
+              </Box>
+            </Box>
+          </Box>
+        );
+      })}
     </Box>
   );
 };
@@ -356,38 +470,66 @@ const RoomCard: React.FC<{ pc: PCStatus }> = ({ pc }) => {
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 
-const PCStatusPage: React.FC = () => {
-  const { pcs, stats, statsByType, fetching, error, updatedAt, reload } = usePCStatus();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
+const countsOf = (list: PCStatus[]): PCStats => ({
+  total: list.length,
+  available: list.filter((p) => p.status === "available").length,
+  occupied: list.filter((p) => p.status === "occupied").length,
+  maintenance: list.filter((p) => p.status === "maintenance").length,
+});
 
-  // The 3D floor map and the PC grid only show PCs; PlayStation rooms get their own section
-  const sorted = useMemo(() => (pcs ? sortPcs(pcs.filter((p) => !isPlayStation(p))) : []), [pcs]);
+const PCStatusPage: React.FC = () => {
+  const { pcs, statsByType, fetching, error, updatedAt, reload } = usePCStatus();
+  const reservation = useReservationConfig();
+  const [params, setParams] = useSearchParams();
+  const [booking, setBooking] = useState<{ type: StationType; station: string | null } | null>(null);
+  const [manageOpen, setManageOpen] = useState(() => params.has("manage"));
+  const manageCode = params.get("manage") && params.get("manage") !== "1" ? params.get("manage")! : undefined;
+
+  const pcList = useMemo(() => (pcs ? sortPcs(pcs.filter((p) => !isPlayStation(p))) : []), [pcs]);
   const rooms = useMemo(() => (pcs ? sortPcs(pcs.filter(isPlayStation)) : []), [pcs]);
-  const counts = useMemo(() => {
-    if (statsByType?.pc) return statsByType.pc;
-    if (stats) return stats;
-    const list = sorted;
-    return {
-      total: list.length,
-      available: list.filter((p) => p.status === "available").length,
-      occupied: list.filter((p) => p.status === "occupied").length,
-      maintenance: list.filter((p) => p.status === "maintenance").length,
-    };
-  }, [sorted, stats, statsByType]);
-  const roomsFree = rooms.filter((r) => r.status === "available").length;
+  const hasRooms = rooms.length > 0;
+  const view: StationType = params.get("type") === "playstation" && (hasRooms || pcs === null) ? "playstation" : "pc";
+  const list = view === "pc" ? pcList : rooms;
+
+  const setView = (t: StationType) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (t === "pc") next.delete("type");
+        else next.set("type", t);
+        return next;
+      },
+      { replace: true }
+    );
+
+  const counts = useMemo(() => statsByType?.[view] ?? countsOf(list), [statsByType, view, list]);
+  const switchCounts = {
+    pc: { free: statsByType?.pc?.available ?? countsOf(pcList).available, total: statsByType?.pc?.total ?? pcList.length },
+    playstation: { free: statsByType?.playstation?.available ?? countsOf(rooms).available, total: statsByType?.playstation?.total ?? rooms.length },
+  };
 
   const initialLoading = pcs === null && !error;
   const hasData = pcs !== null;
+  const unit = view === "pc" ? { one: "PC", many: "PCs", any: "Book any free PC" } : { one: "room", many: "rooms", any: "Book any free room" };
 
-  const selectFromList = (id: string) => {
-    setSelectedId((cur) => (cur === id ? null : id));
-    mapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const openBooking = (station: string | null) => setBooking({ type: view, station });
+  const closeManage = () => {
+    setManageOpen(false);
+    if (params.has("manage")) {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("manage");
+          return next;
+        },
+        { replace: true }
+      );
+    }
   };
 
   return (
     <Box sx={{ position: "relative", pt: { xs: 3, md: 6 }, pb: { xs: 8, md: 12 } }}>
-      {/* CS2 key art fading in behind the header */}
+      {/* Key art fading in behind the header (CS2 for PCs, FC for PS5) */}
       <Box
         aria-hidden
         sx={{
@@ -397,7 +539,8 @@ const PCStatusPage: React.FC = () => {
           right: 0,
           height: { xs: 340, md: 440 },
           pointerEvents: "none",
-          background: `url(${arenaPc}) 85% 30% / cover no-repeat`,
+          background: `url(${view === "pc" ? arenaPc : arenaPs5}) 85% 30% / cover no-repeat`,
+          transition: "background-image .4s ease",
           opacity: { xs: 0.3, md: 0.45 },
           maskImage:
             "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.35) 35%, #000 75%), linear-gradient(180deg, #000 30%, transparent 100%)",
@@ -421,7 +564,7 @@ const PCStatusPage: React.FC = () => {
               alignItems: { xs: "flex-start", md: "flex-end" },
               justifyContent: "space-between",
               gap: { xs: 2, md: 4 },
-              mb: { xs: 3, md: 4 },
+              mb: { xs: 2.5, md: 3.5 },
             }}
           >
             <Box>
@@ -437,7 +580,7 @@ const PCStatusPage: React.FC = () => {
                   "&::before": { content: '""', width: 18, height: 2, borderRadius: 2, background: tokens.cyan },
                 }}
               >
-                Live status
+                Live status · Booking
               </Typography>
               <Typography
                 variant="h1"
@@ -446,42 +589,43 @@ const PCStatusPage: React.FC = () => {
                 Live availability
               </Typography>
               <Typography sx={{ color: tokens.textMuted, mt: 1, fontSize: { xs: "0.98rem", md: "1.08rem" } }}>
-                See which PCs and PS5 rooms are free right now — or book one ahead.
+                See what's free right now. Tap any {hasRooms ? "PC or PS5 room" : "PC"} to book a time — confirmed instantly.
               </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: { xs: "wrap", md: "nowrap" }, flexShrink: 0 }}>
               <Button
-                component={RouterLink}
-                to="/reserve"
-                variant="contained"
-                startIcon={<EventAvailable />}
-                sx={{ fontWeight: 700, order: { xs: 3, md: 0 }, width: { xs: "100%", sm: "auto" } }}
+                variant="outlined"
+                startIcon={<ManageSearch />}
+                onClick={() => setManageOpen(true)}
+                sx={{ borderColor: tokens.border, color: tokens.text, height: 40 }}
               >
-                Reserve a station
+                Manage booking
               </Button>
               <LiveIndicator updatedAt={updatedAt} stale={!!error && hasData} />
               <Tooltip title="Refresh now">
-                <IconButton
-                  onClick={reload}
-                  disabled={fetching}
-                  aria-label="Refresh PC status"
-                  sx={{
-                    border: `1px solid ${tokens.border}`,
-                    background: tokens.surface,
-                    color: tokens.text,
-                    "&:hover": { background: tokens.surfaceHover, borderColor: tokens.borderStrong },
-                    "&.Mui-disabled": { color: tokens.cyan },
-                  }}
-                >
-                  <Refresh
+                <span>
+                  <IconButton
+                    onClick={reload}
+                    disabled={fetching}
+                    aria-label="Refresh station status"
                     sx={{
-                      fontSize: 20,
-                      animation: fetching ? "spin 0.9s linear infinite" : "none",
-                      "@keyframes spin": { to: { transform: "rotate(360deg)" } },
+                      border: `1px solid ${tokens.border}`,
+                      background: tokens.surface,
+                      color: tokens.text,
+                      "&:hover": { background: tokens.surfaceHover, borderColor: tokens.borderStrong },
+                      "&.Mui-disabled": { color: tokens.cyan },
                     }}
-                  />
-                </IconButton>
+                  >
+                    <Refresh
+                      sx={{
+                        fontSize: 20,
+                        animation: fetching ? "spin 0.9s linear infinite" : "none",
+                        "@keyframes spin": { to: { transform: "rotate(360deg)" } },
+                      }}
+                    />
+                  </IconButton>
+                </span>
               </Tooltip>
             </Box>
           </Box>
@@ -525,6 +669,15 @@ const PCStatusPage: React.FC = () => {
           )}
         </AnimatePresence>
 
+        {/* PCs / PS5 rooms */}
+        {(hasRooms || initialLoading) && (
+          initialLoading ? (
+            <Box className="skeleton" sx={{ height: 62, width: { xs: "100%", sm: 460 }, borderRadius: "18px", mb: { xs: 2, md: 2.5 } }} />
+          ) : (
+            <TypeSwitch value={view} onChange={setView} counts={switchCounts} />
+          )
+        )}
+
         {/* Stats */}
         <Box
           sx={{
@@ -542,48 +695,70 @@ const PCStatusPage: React.FC = () => {
             <>
               <StatCard label="Available" value={counts.available} total={counts.total} color={STATUS_META.available.color} />
               <StatCard label="Occupied" value={counts.occupied} total={counts.total} color={STATUS_META.occupied.color} />
-              <StatCard
-                label="Maintenance"
-                value={counts.maintenance}
-                total={counts.total}
-                color={STATUS_META.maintenance.color}
-              />
-              <StatCard label="Total PCs" value={counts.total} total={counts.total} color={tokens.cyan} showBar={false} />
+              <StatCard label="Maintenance" value={counts.maintenance} total={counts.total} color={STATUS_META.maintenance.color} />
+              <StatCard label={view === "pc" ? "Total PCs" : "Total rooms"} value={counts.total} total={counts.total} color={tokens.cyan} showBar={false} />
             </>
           )}
         </Box>
 
-        {/* 3D floor map */}
-        <motion.div
-          ref={mapRef}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          style={{ scrollMarginTop: 96 }}
-        >
-          {initialLoading ? (
-            <Box className="skeleton" sx={{ height: { xs: 330, sm: 460, md: 600 }, borderRadius: { xs: 4, md: 6 } }} />
-          ) : hasData ? (
-            <PCGrid3D pcs={sorted} selectedId={selectedId} onSelect={setSelectedId} />
-          ) : null}
-        </motion.div>
+        {/* 3D map: PC floor or PS5 rooms */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {initialLoading ? (
+              <Box className="skeleton" sx={{ height: { xs: 330, sm: 460, md: 600 }, borderRadius: { xs: 4, md: 6 } }} />
+            ) : hasData ? (
+              <PCGrid3D
+                variant={view}
+                pcs={list}
+                selectedId={booking?.type === view ? booking.station : null}
+                onSelect={(id) => id && openBooking(id)}
+              />
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
 
-        {/* All stations */}
-        <Box sx={{ mt: { xs: 5, md: 7 } }}>
+        {/* Book bar */}
+        {hasData && list.length > 0 && (
           <Box
             sx={{
+              mt: { xs: 1.5, md: 2 },
               display: "flex",
-              alignItems: "baseline",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "stretch", sm: "center" },
               justifyContent: "space-between",
-              gap: 2,
-              mb: 2,
+              gap: 1.5,
+              p: { xs: 1.5, md: 2 },
+              borderRadius: 4,
+              background: `linear-gradient(90deg, ${alpha(tokens.cyan, 0.08)}, ${alpha(tokens.purple, 0.08)})`,
+              border: `1px solid ${tokens.border}`,
             }}
           >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, color: tokens.textMuted, fontSize: "0.92rem" }}>
+              <TouchApp sx={{ color: tokens.cyan }} />
+              <span>
+                Tap any {unit.one} on the map or in the list to pick a time. No account needed.
+              </span>
+            </Box>
+            <Button variant="contained" startIcon={<EventAvailable />} onClick={() => openBooking(null)} sx={{ fontWeight: 700, height: 44, px: 2.5, flexShrink: 0 }}>
+              {unit.any}
+            </Button>
+          </Box>
+        )}
+
+        {/* Station list */}
+        <Box sx={{ mt: { xs: 4, md: 6 } }}>
+          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2, mb: 2 }}>
             <Typography
               variant="h3"
               sx={{ fontSize: { xs: "1.15rem", md: "1.4rem" }, textTransform: "uppercase", letterSpacing: "0.04em" }}
             >
-              Gaming PCs
+              {view === "pc" ? "Gaming PCs" : "PS5 rooms"}
             </Typography>
             {hasData && (
               <Typography sx={{ color: tokens.textMuted, fontSize: "0.9rem" }}>
@@ -595,50 +770,21 @@ const PCStatusPage: React.FC = () => {
             )}
           </Box>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" },
-              gap: { xs: 1.25, md: 1.5 },
-            }}
-          >
-            {initialLoading
-              ? Array.from({ length: 10 }).map((_, i) => (
-                  <Box key={i} className="skeleton" sx={{ height: 92, borderRadius: 3.5 }} />
-                ))
-              : sorted.map((pc) => (
-                  <StationCard
-                    key={pc.pcNumber}
-                    pc={pc}
-                    selected={selectedId === pc.pcNumber}
-                    onClick={() => selectFromList(pc.pcNumber)}
-                  />
-                ))}
-          </Box>
-
-          {hasData && sorted.length === 0 && (
-            <Typography sx={{ color: tokens.textMuted, textAlign: "center", py: 6 }}>
-              No stations are listed yet. Check back soon.
-            </Typography>
-          )}
-        </Box>
-
-        {/* PlayStation rooms */}
-        {(initialLoading || rooms.length > 0) && (
-          <Box sx={{ mt: { xs: 5, md: 7 } }}>
-            <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2, mb: 2, flexWrap: "wrap" }}>
-              <Typography variant="h3" sx={{ fontSize: { xs: "1.15rem", md: "1.4rem" }, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                PlayStation rooms
-              </Typography>
-              {hasData && (
-                <Typography sx={{ color: tokens.textMuted, fontSize: "0.9rem" }}>
-                  <Box component="span" sx={{ color: STATUS_META.available.color, fontWeight: 700 }}>
-                    {statsByType?.playstation?.available ?? roomsFree}
-                  </Box>{" "}
-                  of {statsByType?.playstation?.total ?? rooms.length} free
-                </Typography>
-              )}
+          {view === "pc" || initialLoading ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" },
+                gap: { xs: 1.25, md: 1.5 },
+              }}
+            >
+              {initialLoading
+                ? Array.from({ length: 10 }).map((_, i) => <Box key={i} className="skeleton" sx={{ height: 92, borderRadius: 3.5 }} />)
+                : pcList.map((pc) => (
+                    <StationCard key={pc.pcNumber} pc={pc} selected={booking?.station === pc.pcNumber} onClick={() => openBooking(pc.pcNumber)} />
+                  ))}
             </Box>
+          ) : (
             <Box
               sx={{
                 display: "grid",
@@ -646,24 +792,32 @@ const PCStatusPage: React.FC = () => {
                 gap: { xs: 1.25, md: 2 },
               }}
             >
-              {initialLoading
-                ? Array.from({ length: 2 }).map((_, i) => <Box key={i} className="skeleton" sx={{ height: 170, borderRadius: 4 }} />)
-                : rooms.map((pc) => <RoomCard key={pc.pcNumber} pc={pc} />)}
+              {rooms.map((pc) => (
+                <RoomCard key={pc.pcNumber} pc={pc} onClick={() => openBooking(pc.pcNumber)} />
+              ))}
             </Box>
-            {hasData && (
-              <Button
-                component={RouterLink}
-                to="/reserve?type=playstation"
-                variant="outlined"
-                startIcon={<EventAvailable />}
-                sx={{ mt: 2 }}
-              >
-                Book a PS5 room
-              </Button>
-            )}
-          </Box>
-        )}
+          )}
+
+          {hasData && list.length === 0 && (
+            <Typography sx={{ color: tokens.textMuted, textAlign: "center", py: 6 }}>
+              No stations are listed yet. Check back soon.
+            </Typography>
+          )}
+        </Box>
       </Container>
+
+      <BookingDialog
+        open={!!booking}
+        type={booking?.type ?? view}
+        station={booking?.station ?? null}
+        live={pcs ?? []}
+        config={reservation.config}
+        configError={reservation.error}
+        onRetryConfig={reservation.reload}
+        onClose={() => setBooking(null)}
+        onBooked={() => reload()}
+      />
+      <ManageBookingDialog open={manageOpen} initialCode={manageCode} onClose={closeManage} onChanged={() => reload()} />
     </Box>
   );
 };

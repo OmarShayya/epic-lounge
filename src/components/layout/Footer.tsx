@@ -35,8 +35,8 @@ const Footer: React.FC = () => (
           <Stack spacing={1.25} sx={{ mt: 1 }}>
             <Box component={RouterLink} to="/" sx={linkSx}>Home</Box>
             <Box component={RouterLink} to="/menu" sx={linkSx}>Menu</Box>
-            <Box component={RouterLink} to="/gaming" sx={linkSx}>Live PC status</Box>
-            <Box component={RouterLink} to="/reserve" sx={linkSx}>Reserve a station</Box>
+            <Box component={RouterLink} to="/gaming" sx={linkSx}>Live status & booking</Box>
+            <Box component={RouterLink} to="/gaming?type=playstation" sx={linkSx}>Book a PS5 room</Box>
             <Box component="a" href="/#features" sx={linkSx}>What's inside</Box>
           </Stack>
         </Grid>
